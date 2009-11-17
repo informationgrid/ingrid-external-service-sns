@@ -12,7 +12,7 @@ public class GazetteerTest extends TestCase {
 	private GazetteerService gazetteerService;
 	
 	public void setUp() {
-		SNSService snsService = new SNSService();
+		SNSServiceAccess snsService = new SNSServiceAccess();
 		try {
 			snsService.init();
 		} catch (Exception e) {
@@ -55,5 +55,42 @@ public class GazetteerTest extends TestCase {
 				QueryType.ONLY_ADMINISTRATIVE_LOCATIONS,
 				locale);
 		assertTrue(locations.length > 0);
+	}
+
+	public final void testgetRelatedLocationsFromLocation() {
+		Location[] locations;
+
+		// valid location in german
+		String locationId = "BERG41128";
+		Locale locale = Locale.GERMAN;
+		locations = gazetteerService.getRelatedLocationsFromLocation(locationId, locale);
+		assertTrue(locations.length > 0);
+
+		// in english ?
+		locale = Locale.ENGLISH;
+		locations = gazetteerService.getRelatedLocationsFromLocation(locationId, locale);
+		assertTrue(locations.length > 0);
+
+		// valid location in german
+		locationId = "NATURPARK31";
+		locale = Locale.GERMAN;
+		locations = gazetteerService.getRelatedLocationsFromLocation(locationId, locale);
+		assertTrue(locations.length > 0);
+
+		// in english ?
+		locale = Locale.ENGLISH;
+		locations = gazetteerService.getRelatedLocationsFromLocation(locationId, locale);
+		assertTrue(locations.length > 0);
+
+		// INVALID location in german
+		locationId = "wrong id";
+		locale = Locale.GERMAN;
+		locations = gazetteerService.getRelatedLocationsFromLocation(locationId, locale);
+		assertTrue(locations.length == 0);
+
+		// in english ?
+		locale = Locale.ENGLISH;
+		locations = gazetteerService.getRelatedLocationsFromLocation(locationId, locale);
+		assertTrue(locations.length == 0);
 	}
 }
