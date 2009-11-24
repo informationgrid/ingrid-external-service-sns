@@ -1,7 +1,6 @@
 package de.ingrid.external.sns;
 
 import java.net.URL;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.ResourceBundle;
@@ -51,18 +50,9 @@ public class SNSServiceAccess implements GazetteerService {
 
 	@Override
 	public Location[] getRelatedLocationsFromLocation(String locationId, Locale language) {
-    	List<Location> resultList = new ArrayList<Location>();
-
     	// no language in SNS for getPSI !!!
     	Topic[] topics = snsGetPSI(locationId);
-        if ((null != topics)) {
-            for (Topic topic : topics) {
-            	Location t = snsMapper.mapTopicToLocation(topic);
-            	if (t != null) {
-            		resultList.add(t);
-            	}
-			}
-        }
+    	List<Location> resultList = snsMapper.mapTopicsToLocations(topics);
 
 	    return resultList.toArray(new Location[resultList.size()]);
 	}
@@ -70,25 +60,19 @@ public class SNSServiceAccess implements GazetteerService {
 	@Override
 	public Location[] getLocationsFromText(String text, int analyzeMaxWords,
 			boolean ignoreCase, Locale language) {
-		// TODO Auto-generated method stub
-		return null;
+    	Topic[] topics = snsAutoClassify(text, analyzeMaxWords, ignoreCase, language);
+    	List<Location> resultList = snsMapper.mapTopicsToLocations(topics);
+
+	    return resultList.toArray(new Location[resultList.size()]);
 	}
 
 	@Override
 	public Location[] getLocationsFromQueryTerms(String queryTerms,
 			QueryType typeOfQuery, Locale language) {
-    	List<Location> resultList = new ArrayList<Location>();
     	String path = getSNSLocationPath(typeOfQuery);
 
     	Topic[] topics = snsFindTopics(queryTerms, path, language);
-        if ((null != topics)) {
-            for (Topic topic : topics) {
-            	Location t = snsMapper.mapTopicToLocation(topic);
-            	if (t != null) {
-            		resultList.add(t);
-            	}
-			}
-        }
+    	List<Location> resultList = snsMapper.mapTopicsToLocations(topics);
 
 	    return resultList.toArray(new Location[resultList.size()]);
 	}
@@ -131,6 +115,25 @@ public class SNSServiceAccess implements GazetteerService {
 	    return topics;
 	}
 	
+	/** Call SNS autoClassify. Map passed params to according SNS params. */
+	private Topic[] snsAutoClassify(String text, int analyzeMaxWords,
+			boolean ignoreCase, Locale language) {
+		Topic[] topics = null;
+    	String langFilter = getSNSLanguageFilter(language);
+
+    	TopicMapFragment mapFragment = null;
+    	try {
+    		mapFragment = snsClient.autoClassify(text, analyzeMaxWords, SNS_PATH_ALL_LOCATIONS, ignoreCase, langFilter);
+    	} catch (Exception e) {
+	    	log.error(e);
+	    }
+	    
+	    if (null != mapFragment) {
+	    	topics = mapFragment.getTopicMap().getTopic();
+	    }
+	    return topics;
+	}
+	
 	/** Determine location path for SNS dependent from passed query type.
 	 * @param typeOfQuery query type from request, pass null if default location path !
 	 * @return SNS location path
@@ -158,5 +161,4 @@ public class SNSServiceAccess implements GazetteerService {
 		
     	return langFilter;
 	}
-
 }

@@ -21,42 +21,6 @@ public class GazetteerTest extends TestCase {
 		gazetteerService = snsService;
 	}
 	
-	public final void testGetLocationsFromQueryTerms() {
-		Location[] locations;
-
-		// german locations
-		String queryTerms = "Frankfurt";
-		Locale locale = Locale.GERMAN;
-		
-		// all locations
-		locations = gazetteerService.getLocationsFromQueryTerms(queryTerms,
-				QueryType.ALL_LOCATIONS,
-				locale);
-		assertTrue(locations.length > 0);
-
-		// only administrative locations
-		locations = gazetteerService.getLocationsFromQueryTerms(queryTerms,
-				QueryType.ONLY_ADMINISTRATIVE_LOCATIONS,
-				locale);
-		assertTrue(locations.length > 0);
-
-		// english results
-		queryTerms = "Frankfurt";
-		locale = Locale.ENGLISH;
-
-		// all locations
-		locations = gazetteerService.getLocationsFromQueryTerms(queryTerms,
-				QueryType.ALL_LOCATIONS,
-				locale);
-		assertTrue(locations.length > 0);
-
-		// only administrative locations
-		locations = gazetteerService.getLocationsFromQueryTerms(queryTerms,
-				QueryType.ONLY_ADMINISTRATIVE_LOCATIONS,
-				locale);
-		assertTrue(locations.length > 0);
-	}
-
 	public final void testgetRelatedLocationsFromLocation() {
 		Location[] locations;
 
@@ -92,5 +56,61 @@ public class GazetteerTest extends TestCase {
 		locale = Locale.ENGLISH;
 		locations = gazetteerService.getRelatedLocationsFromLocation(locationId, locale);
 		assertTrue(locations.length == 0);
+	}
+
+	public final void testLocationsFromText() {
+		Location[] locations;
+
+		// german locations
+		String text = "Frankfurt Sachsenhausen Äppelwoi Handkäs Main";
+		int analyzeMaxWords = 1000;
+		boolean ignoreCase = true;
+		Locale locale = Locale.GERMAN;
+		
+		locations = gazetteerService.getLocationsFromText(text, analyzeMaxWords, ignoreCase, locale);
+		assertTrue(locations.length > 0);
+
+		// english results
+		text = "Frankfurt Main Sachsenhausen Airport";
+		locale = Locale.ENGLISH;
+
+		locations = gazetteerService.getLocationsFromText(text, analyzeMaxWords, ignoreCase, locale);
+		assertTrue(locations.length > 0);
+	}
+
+	public final void testGetLocationsFromQueryTerms() {
+		Location[] locations;
+
+		// german locations
+		String queryTerms = "Frankfurt";
+		Locale locale = Locale.GERMAN;
+		
+		// all locations
+		locations = gazetteerService.getLocationsFromQueryTerms(queryTerms,
+				QueryType.ALL_LOCATIONS,
+				locale);
+		assertTrue(locations.length > 0);
+
+		// only administrative locations
+		locations = gazetteerService.getLocationsFromQueryTerms(queryTerms,
+				QueryType.ONLY_ADMINISTRATIVE_LOCATIONS,
+				locale);
+		assertTrue(locations.length > 0);
+
+		// english results
+		queryTerms = "Frankfurt";
+		locale = Locale.ENGLISH;
+
+		// all locations
+		locations = gazetteerService.getLocationsFromQueryTerms(queryTerms,
+				QueryType.ALL_LOCATIONS,
+				locale);
+		assertTrue(locations.length > 0);
+
+		// only administrative locations
+		locations = gazetteerService.getLocationsFromQueryTerms(queryTerms,
+				QueryType.ONLY_ADMINISTRATIVE_LOCATIONS,
+				locale);
+		assertTrue(locations.length > 0);
 	}
 }

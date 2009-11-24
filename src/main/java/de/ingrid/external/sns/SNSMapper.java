@@ -1,7 +1,9 @@
 package de.ingrid.external.sns;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.ResourceBundle;
 
 import org.apache.log4j.Logger;
@@ -37,6 +39,25 @@ public class SNSMapper {
 		this.resourceBundle = resourceBundle;
     	SNS_NATIVE_KEY_PREFIX = resourceBundle.getString("sns.nativeKeyPrefix");
 	}
+
+    /** Creates a Location list from the given topics.
+     * @param topics sns topics representing location
+     * @return the locations or empty list
+     */
+    public List<Location> mapTopicsToLocations(Topic[] topics) {
+    	List<Location> resultList = new ArrayList<Location>();
+
+    	if ((null != topics)) {
+            for (Topic topic : topics) {
+            	Location t = mapTopicToLocation(topic);
+            	if (t != null) {
+            		resultList.add(t);
+            	}
+			}
+        }
+    	
+    	return resultList;
+    }
 
     /** Creates a Location from the given topic.
      * @param topic sns topic representing location
