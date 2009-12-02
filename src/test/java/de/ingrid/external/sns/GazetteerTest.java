@@ -21,7 +21,7 @@ public class GazetteerTest extends TestCase {
 		gazetteerService = snsService;
 	}
 	
-	public final void testRelatedLocationsFromLocation() {
+	public final void testGetRelatedLocationsFromLocation() {
 		Location[] locations;
 
 		// valid location in german
@@ -58,7 +58,7 @@ public class GazetteerTest extends TestCase {
 		assertTrue(locations.length == 0);
 	}
 
-	public final void testLocationsFromText() {
+	public final void testGetLocationsFromText() {
 		Location[] locations;
 
 		// german locations
@@ -78,7 +78,7 @@ public class GazetteerTest extends TestCase {
 		assertTrue(locations.length > 0);
 	}
 
-	public final void testLocationsFromQueryTerms() {
+	public final void testGetLocationsFromQueryTerms() {
 		Location[] locations;
 
 		// german locations
