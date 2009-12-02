@@ -12,7 +12,7 @@ public class GazetteerTest extends TestCase {
 	private GazetteerService gazetteerService;
 	
 	public void setUp() {
-		SNSServiceAccess snsService = new SNSServiceAccess();
+		SNSService snsService = new SNSService();
 		try {
 			snsService.init();
 		} catch (Exception e) {

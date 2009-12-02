@@ -15,18 +15,23 @@ import com.slb.taxi.webservice.xtm.stubs.xtm.Topic;
 
 import de.ingrid.external.FullClassifyService;
 import de.ingrid.external.GazetteerService;
+import de.ingrid.external.ThesaurusService;
 import de.ingrid.external.om.FullClassifyResult;
 import de.ingrid.external.om.Location;
+import de.ingrid.external.om.RelatedTerm;
+import de.ingrid.external.om.Term;
+import de.ingrid.external.om.TreeTerm;
 import de.ingrid.iplug.sns.SNSClient;
 import de.ingrid.iplug.sns.SNSController;
 
 /**
- * SNS Access implementing abstract gazetteer, thesaurus API (external services).
+ * SNS Access implementing abstract gazetteer, thesaurus, fullClassify API (external services).
  */
-public class SNSServiceAccess implements GazetteerService, FullClassifyService {
+public class SNSService implements GazetteerService, ThesaurusService, FullClassifyService {
 
-	private final static Logger log = Logger.getLogger(SNSServiceAccess.class);	
+	private final static Logger log = Logger.getLogger(SNSService.class);	
 
+	private final static String SNS_FILTER_THESA = "/thesa";
 	private final static String SNS_FILTER_LOCATIONS = "/location";
 	private final static String SNS_PATH_ADMINISTRATIVE_LOCATIONS = "/location/admin";
 
@@ -54,11 +59,12 @@ public class SNSServiceAccess implements GazetteerService, FullClassifyService {
     	snsMapper = SNSMapper.getInstance(resourceBundle);
     }
 
+    // ----------------------- GazetteerService -----------------------------------
 
 	@Override
 	public Location[] getRelatedLocationsFromLocation(String locationId, Locale language) {
     	// no language in SNS for getPSI !!!
-    	Topic[] topics = snsGetPSI(locationId);
+    	Topic[] topics = snsGetPSI(locationId, SNS_FILTER_LOCATIONS);
     	List<Location> resultList = snsMapper.mapToLocations(topics);
 
 	    return resultList.toArray(new Location[resultList.size()]);
@@ -83,6 +89,53 @@ public class SNSServiceAccess implements GazetteerService, FullClassifyService {
 
 	    return resultList.toArray(new Location[resultList.size()]);
 	}
+
+    // ----------------------- ThesaurusService -----------------------------------
+
+	@Override
+	public TreeTerm[] getHierarchyNextLevel(String termId, Locale language) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public TreeTerm[] getHierarchyPathToTop(String termId, Locale language) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public String[] getRelatedNamesFromName(String name, Locale language) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public RelatedTerm[] getRelatedTermsFromTerm(String termId, Locale language) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Term getTerm(String termId, Locale language) {
+    	Term result = null;
+
+    	// no language in SNS for getPSI !!!
+    	Topic[] topics = snsGetPSI(termId, SNS_FILTER_THESA);
+    	if (topics != null && topics.length > 0) {
+    		result = snsMapper.mapToTerm(topics[0]);
+    	}
+	    return result;
+	}
+
+	@Override
+	public Term[] getTermsFromText(String text, int analyzeMaxWords,
+			boolean ignoreCase, Locale language) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+    // ----------------------- FullClassifyService -----------------------------------
 
 	@Override
 	public FullClassifyResult autoClassifyURL(URL url, int analyzeMaxWords,
@@ -118,12 +171,12 @@ public class SNSServiceAccess implements GazetteerService, FullClassifyService {
 	}
 	
 	/** Call SNS getPSI. Map passed params to according SNS params. */
-	private Topic[] snsGetPSI(String locationId) {
+	private Topic[] snsGetPSI(String topicId, String filter) {
 		Topic[] topics = null;
 
     	TopicMapFragment mapFragment = null;
     	try {
-    		mapFragment = snsClient.getPSI(locationId, 0, SNS_FILTER_LOCATIONS);
+    		mapFragment = snsClient.getPSI(topicId, 0, filter);
     	} catch (Exception e) {
 	    	log.error("Error calling snsClient.getPSI", e);
 	    }
