@@ -61,6 +61,35 @@ public class ThesaurusTest extends TestCase {
 		assertNull(term);
 	}
 
+	public final void testGetTermsFromText() {
+		Term[] terms;
+
+		// german locations
+		String text = "Waldsterben";
+		int analyzeMaxWords = 1000;
+		boolean ignoreCase = true;
+		Locale locale = Locale.GERMAN;
+		
+		terms = thesaurusService.getTermsFromText(text, analyzeMaxWords, ignoreCase, locale);
+		assertTrue(terms.length > 0);
+		for (Term term : terms) {
+			checkTerm(term, null, TermType.DESCRIPTOR, null);
+		}
+
+		// english results
+		text = "forest deterioration";
+		locale = Locale.ENGLISH;
+
+		terms = thesaurusService.getTermsFromText(text, analyzeMaxWords, ignoreCase, locale);
+		assertTrue(terms.length > 0);
+		for (Term term : terms) {
+			checkTerm(term, null, TermType.DESCRIPTOR, null);
+		}
+	}
+
+	private void checkTerm(Term term) {
+		checkTerm(term, null, null, null);
+	}
 	private void checkTerm(Term term, String id, TermType type, String name) {
 		assertNotNull(term);
 		assertNotNull(term.getId());

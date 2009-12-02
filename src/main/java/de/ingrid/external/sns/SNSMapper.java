@@ -138,13 +138,19 @@ public class SNSMapper {
 
     /** Creates a Term list from the given topics.<br/>
      * @param topics sns topics representing terms
+     * @param filter only use topics matching the given type, remove the other ones ! Pass null if all types
      * @return the terms NEVER NULL
      */
-    public List<Term> mapToTerms(Topic[] topics) {
+    public List<Term> mapToTerms(Topic[] topics, TermType filter) {
     	List<Term> resultList = new ArrayList<Term>();
 
     	if ((null != topics)) {
             for (Topic topic : topics) {
+            	if (filter != null) {
+            		if (!getTermType(topic).equals(filter)) {
+            			continue;
+            		}
+            	}
     			resultList.add(mapToTerm(topic));
 			}
         }
@@ -255,7 +261,7 @@ public class SNSMapper {
     	}
     	
     	result.setLocations(mapToLocations(locTopics.toArray(new Topic[locTopics.size()])));
-    	result.setTerms(mapToTerms(thesaTopics.toArray(new Topic[thesaTopics.size()])));
+    	result.setTerms(mapToTerms(thesaTopics.toArray(new Topic[thesaTopics.size()]), null));
     	result.setEvents(mapToEvents(eventTopics.toArray(new Topic[eventTopics.size()])));
 
     	return result;
@@ -335,7 +341,10 @@ public class SNSMapper {
 			return TermType.NODE_LABEL;
 		else if (nodeType.indexOf("descriptorType") != -1) 
 			return TermType.DESCRIPTOR;
-		else if (nodeType.indexOf("nonDescriptorType") != -1) 
+		// SNS 2.1
+		else if (nodeType.indexOf("nonDescriptorType") != -1 ||
+				// SNS 2.0
+				nodeType.indexOf("synonymType") != -1)
 			return TermType.NON_DESCRIPTOR;
 		else
 			return TermType.NODE_LABEL;

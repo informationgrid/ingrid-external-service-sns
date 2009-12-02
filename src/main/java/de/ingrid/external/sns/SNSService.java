@@ -21,8 +21,8 @@ import de.ingrid.external.om.Location;
 import de.ingrid.external.om.RelatedTerm;
 import de.ingrid.external.om.Term;
 import de.ingrid.external.om.TreeTerm;
+import de.ingrid.external.om.Term.TermType;
 import de.ingrid.iplug.sns.SNSClient;
-import de.ingrid.iplug.sns.SNSController;
 
 /**
  * SNS Access implementing abstract gazetteer, thesaurus, fullClassify API (external services).
@@ -40,7 +40,6 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     private static String ERROR_SNS_INVALID_URL = "SNS_INVALID_URL";
 
     private SNSClient snsClient;
-    private SNSController snsController;
     private SNSMapper snsMapper;
 
     // Init Method is called by the Spring Framework on initialization
@@ -55,7 +54,6 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     			resourceBundle.getString("sns.language"),
         		new URL(resourceBundle.getString("sns.serviceURL")));
     	snsClient.setTimeout(SNS_TIMEOUT);
-    	snsController = new SNSController(snsClient, resourceBundle.getString("sns.nativeKeyPrefix"));
     	snsMapper = SNSMapper.getInstance(resourceBundle);
     }
 
@@ -122,8 +120,14 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 
     	// no language in SNS for getPSI !!!
     	Topic[] topics = snsGetPSI(termId, SNS_FILTER_THESA);
-    	if (topics != null && topics.length > 0) {
-    		result = snsMapper.mapToTerm(topics[0]);
+    	if (topics != null) {
+            for (Topic topic : topics) {
+            	if (topic.getId().equals(termId)) {
+            		result = snsMapper.mapToTerm(topic);
+            		break;
+            	}
+            }
+
     	}
 	    return result;
 	}
@@ -131,8 +135,10 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 	@Override
 	public Term[] getTermsFromText(String text, int analyzeMaxWords,
 			boolean ignoreCase, Locale language) {
-		// TODO Auto-generated method stub
-		return null;
+    	Topic[] topics = snsAutoClassifyText(text, analyzeMaxWords, SNS_FILTER_THESA, ignoreCase, language);
+    	List<Term> resultList = snsMapper.mapToTerms(topics, TermType.DESCRIPTOR);
+
+	    return resultList.toArray(new Term[resultList.size()]);
 	}
 
     // ----------------------- FullClassifyService -----------------------------------
