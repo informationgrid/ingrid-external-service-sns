@@ -22,6 +22,7 @@ import de.ingrid.external.om.RelatedTerm;
 import de.ingrid.external.om.Term;
 import de.ingrid.external.om.TreeTerm;
 import de.ingrid.external.om.Term.TermType;
+import de.ingrid.external.om.impl.TermImpl;
 import de.ingrid.iplug.sns.SNSClient;
 
 /**
@@ -62,8 +63,8 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 	@Override
 	public Location[] getRelatedLocationsFromLocation(String locationId, Locale language) {
     	// no language in SNS for getPSI !!!
-    	Topic[] topics = snsGetPSI(locationId, SNS_FILTER_LOCATIONS);
-    	List<Location> resultList = snsMapper.mapToLocations(topics);
+    	Topic[] topics = snsMapper.getTopics(snsGetPSI(locationId, SNS_FILTER_LOCATIONS));
+    	List<Location> resultList = snsMapper.mapToLocations(topics, true);
 
 	    return resultList.toArray(new Location[resultList.size()]);
 	}
@@ -72,7 +73,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 	public Location[] getLocationsFromText(String text, int analyzeMaxWords,
 			boolean ignoreCase, Locale language) {
     	Topic[] topics = snsAutoClassifyText(text, analyzeMaxWords, SNS_FILTER_LOCATIONS, ignoreCase, language);
-    	List<Location> resultList = snsMapper.mapToLocations(topics);
+    	List<Location> resultList = snsMapper.mapToLocations(topics, true);
 
 	    return resultList.toArray(new Location[resultList.size()]);
 	}
@@ -83,7 +84,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     	String path = getSNSLocationPath(typeOfQuery);
 
     	Topic[] topics = snsFindTopics(queryTerms, path, language);
-    	List<Location> resultList = snsMapper.mapToLocations(topics);
+    	List<Location> resultList = snsMapper.mapToLocations(topics, true);
 
 	    return resultList.toArray(new Location[resultList.size()]);
 	}
@@ -110,8 +111,12 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 
 	@Override
 	public RelatedTerm[] getRelatedTermsFromTerm(String termId, Locale language) {
-		// TODO Auto-generated method stub
-		return null;
+    	// no language in SNS for getPSI !!!
+		TopicMapFragment mapFragment = snsGetPSI(termId, SNS_FILTER_THESA);
+
+    	List<RelatedTerm> resultList = snsMapper.mapToRelatedTerms(termId, mapFragment, false);
+
+	    return resultList.toArray(new RelatedTerm[resultList.size()]);
 	}
 
 	@Override
@@ -119,11 +124,11 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     	Term result = null;
 
     	// no language in SNS for getPSI !!!
-    	Topic[] topics = snsGetPSI(termId, SNS_FILTER_THESA);
+    	Topic[] topics = snsMapper.getTopics(snsGetPSI(termId, SNS_FILTER_THESA));
     	if (topics != null) {
             for (Topic topic : topics) {
             	if (topic.getId().equals(termId)) {
-            		result = snsMapper.mapToTerm(topic);
+            		result = snsMapper.mapToTerm(topic, new TermImpl());
             		break;
             	}
             }
@@ -177,9 +182,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 	}
 	
 	/** Call SNS getPSI. Map passed params to according SNS params. */
-	private Topic[] snsGetPSI(String topicId, String filter) {
-		Topic[] topics = null;
-
+	private TopicMapFragment snsGetPSI(String topicId, String filter) {
     	TopicMapFragment mapFragment = null;
     	try {
     		mapFragment = snsClient.getPSI(topicId, 0, filter);
@@ -187,10 +190,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 	    	log.error("Error calling snsClient.getPSI", e);
 	    }
 	    
-	    if (null != mapFragment) {
-	    	topics = mapFragment.getTopicMap().getTopic();
-	    }
-	    return topics;
+	    return mapFragment;
 	}
 	
 	/** Call SNS autoClassify. Map passed params to according SNS params. */

@@ -1,6 +1,7 @@
 package de.ingrid.external.sns;
 
 import java.net.URL;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -12,6 +13,9 @@ import org.apache.log4j.Logger;
 
 import com.slb.taxi.webservice.xtm.stubs.TopicMapFragment;
 import com.slb.taxi.webservice.xtm.stubs.TopicMapFragmentIndexedDocument;
+import com.slb.taxi.webservice.xtm.stubs.xtm.Association;
+import com.slb.taxi.webservice.xtm.stubs.xtm.InstanceOf;
+import com.slb.taxi.webservice.xtm.stubs.xtm.Member;
 import com.slb.taxi.webservice.xtm.stubs.xtm.Occurrence;
 import com.slb.taxi.webservice.xtm.stubs.xtm.Topic;
 
@@ -19,12 +23,15 @@ import de.ingrid.external.om.Event;
 import de.ingrid.external.om.FullClassifyResult;
 import de.ingrid.external.om.IndexedDocument;
 import de.ingrid.external.om.Location;
+import de.ingrid.external.om.RelatedTerm;
 import de.ingrid.external.om.Term;
+import de.ingrid.external.om.RelatedTerm.RelationType;
 import de.ingrid.external.om.Term.TermType;
 import de.ingrid.external.om.impl.EventImpl;
 import de.ingrid.external.om.impl.FullClassifyResultImpl;
 import de.ingrid.external.om.impl.IndexedDocumentImpl;
 import de.ingrid.external.om.impl.LocationImpl;
+import de.ingrid.external.om.impl.RelatedTermImpl;
 import de.ingrid.external.om.impl.TermImpl;
 
 /**
@@ -59,20 +66,21 @@ public class SNSMapper {
 	}
 
     /** Creates a Location list from the given topics.<br/>
-     * <b>NOTICE: Removes expired topics !!!</b>
      * @param topics sns topics representing locations
+     * @param checkExpired if true checks topics whether expired and REMOVES expired ones
      * @return the locations NEVER NULL (but may be empty)
      */
-    public List<Location> mapToLocations(Topic[] topics) {
+    public List<Location> mapToLocations(Topic[] topics,
+    		boolean checkExpired) {
     	List<Location> resultList = new ArrayList<Location>();
 
     	if ((null != topics)) {
             for (Topic topic : topics) {
-        		// createLocationTopic returns null for expired topics
-        		Location loc = mapToLocation(topic);
-        		if (null != loc) {
-        			resultList.add(loc);
-        		}
+            	if (checkExpired && isExpired(topic)) {
+            		continue;
+            	}
+
+        		resultList.add(mapToLocation(topic, new LocationImpl()));
 			}
         }
     	
@@ -80,60 +88,49 @@ public class SNSMapper {
     }
 
     /** Creates a Location from the given topic.<br/>
-     * <b>NOTICE: Returns null if topic expired !!!</b>
      * @param topic sns topic representing location
-     * @return the location <b>OR NULL IF TOPIC EXPIRED !!!</b>
+     * @param outLocation the location the topic is mapped to, NEVER NULL 
+     * @return again the outLocation after mapping, NEVER NULL
      */
-    public Location mapToLocation(Topic topic) {
-    	LocationImpl result = new LocationImpl();
-    	result.setId(topic.getId());
-    	result.setName(topic.getBaseName(0).getBaseNameString().get_value());
+    public Location mapToLocation(Topic topic, Location outLocation) {
+    	outLocation.setId(topic.getId());
+    	outLocation.setName(topic.getBaseName(0).getBaseNameString().get_value());
     	String typeId = topic.getInstanceOf(0).getTopicRef().getHref();
     	typeId = typeId.substring(typeId.lastIndexOf("#")+1);
-    	result.setTypeId(typeId);
-    	result.setTypeName(resourceBundle.getString("sns.topic.ref."+typeId));
+    	outLocation.setTypeId(typeId);
+    	outLocation.setTypeName(resourceBundle.getString("sns.topic.ref."+typeId));
 
     	// If the topic doesn't contain any more information return the basic info
-    	if (topic.getOccurrence() == null) {
-    		return result;
-    	}
-
-
-    	// Iterate over all occurrences and extract the relevant information (bounding box wgs84 coords and the qualifier)
-    	for(int i = 0; i < topic.getOccurrence().length; ++i) {
-//    		log.debug(topic.getOccurrence(i).getInstanceOf().getTopicRef().getHref());
-    		if (topic.getOccurrence(i).getInstanceOf().getTopicRef().getHref().endsWith("wgs84BoxOcc")) {
-//    			log.debug("WGS84 Coordinates: "+topic.getOccurrence(i).getResourceData().get_value());        	            			
-        		String coords = topic.getOccurrence(i).getResourceData().get_value();
-        		String[] ar = coords.split("\\s|,");
-        		if (ar.length == 4) {
-        			result.setBoundingBox(new Float(ar[0]), new Float(ar[1]), new Float(ar[2]), new Float(ar[3]));
+    	if (topic.getOccurrence() != null) {
+        	// Iterate over all occurrences and extract the relevant information (bounding box wgs84 coords and the qualifier)
+        	for(int i = 0; i < topic.getOccurrence().length; ++i) {
+//        		log.debug(topic.getOccurrence(i).getInstanceOf().getTopicRef().getHref());
+        		if (topic.getOccurrence(i).getInstanceOf().getTopicRef().getHref().endsWith("wgs84BoxOcc")) {
+//        			log.debug("WGS84 Coordinates: "+topic.getOccurrence(i).getResourceData().get_value());        	            			
+            		String coords = topic.getOccurrence(i).getResourceData().get_value();
+            		String[] ar = coords.split("\\s|,");
+            		if (ar.length == 4) {
+            			outLocation.setBoundingBox(new Float(ar[0]), new Float(ar[1]), new Float(ar[2]), new Float(ar[3]));
+            		}
+        		} else if (topic.getOccurrence(i).getInstanceOf().getTopicRef().getHref().endsWith("qualifier")) {
+//        			log.debug("Qualifier: "+topic.getOccurrence(i).getResourceData().get_value());        	            			
+            		outLocation.setQualifier(topic.getOccurrence(i).getResourceData().get_value());
+        		} else if (topic.getOccurrence(i).getInstanceOf().getTopicRef().getHref().endsWith("nativeKeyOcc")) {
+        			String nativeKeyOcc = topic.getOccurrence(i).getResourceData().get_value();
+        			String[] keys = nativeKeyOcc.split(" ");
+        			for (String nativeKey : keys) {
+        				if (nativeKey.startsWith(SNS_NATIVE_KEY_PREFIX)) {
+        					outLocation.setNativeKey(nativeKey.substring(SNS_NATIVE_KEY_PREFIX.length()));
+        				}
+        			}
         		}
-    		} else if (topic.getOccurrence(i).getInstanceOf().getTopicRef().getHref().endsWith("qualifier")) {
-//    			log.debug("Qualifier: "+topic.getOccurrence(i).getResourceData().get_value());        	            			
-        		result.setQualifier(topic.getOccurrence(i).getResourceData().get_value());
-    		} else if (topic.getOccurrence(i).getInstanceOf().getTopicRef().getHref().endsWith("nativeKeyOcc")) {
-    			String nativeKeyOcc = topic.getOccurrence(i).getResourceData().get_value();
-    			String[] keys = nativeKeyOcc.split(" ");
-    			for (String nativeKey : keys) {
-    				if (nativeKey.startsWith(SNS_NATIVE_KEY_PREFIX)) {
-    					result.setNativeKey(nativeKey.substring(SNS_NATIVE_KEY_PREFIX.length()));
-    				}
-    			}
-    		} else if (topic.getOccurrence(i).getInstanceOf().getTopicRef().getHref().endsWith("expiredOcc")) {
-                try {
-                    Date expiredDate = expiredDateParser.parse(topic.getOccurrence(i).getResourceData().get_value());
-                    if ((null != expiredDate) && expiredDate.before(new Date())) {
-                        return null;
-                    }
-                } catch (java.text.ParseException e) {
-                    log.error("Not expected date format in sns expiredOcc.", e);
-                }
-    		}
+        	}
     	}
-    	if (result.getQualifier() == null)
-    		result.setQualifier(result.getTypeId());
-    	return result;
+
+    	if (outLocation.getQualifier() == null)
+    		outLocation.setQualifier(outLocation.getTypeId());
+
+    	return outLocation;
     }
 
     /** Creates a Term list from the given topics.<br/>
@@ -151,7 +148,7 @@ public class SNSMapper {
             			continue;
             		}
             	}
-    			resultList.add(mapToTerm(topic));
+    			resultList.add(mapToTerm(topic, new TermImpl()));
 			}
         }
     	
@@ -159,27 +156,64 @@ public class SNSMapper {
     }
 
     /** Creates a Term from the given topic.<br/>
-     * @param topic sns topic representing a term
-     * @return the term, NEVER NULL
+     * @param inTopic sns topic representing a term
+     * @param outTerm the term the topic is mapped to, NEVER NULL 
+     * @return again the outTerm after mapping, NEVER NULL
      */
-    public Term mapToTerm(Topic topic) {
-    	TermImpl result = new TermImpl();
+    public Term mapToTerm(Topic inTopic, Term outTerm) {
+		outTerm.setId(inTopic.getId());
+		outTerm.setName(inTopic.getBaseName(0).getBaseNameString().get_value());
+		outTerm.setType(getTermType(inTopic));
 
-		result.setId(topic.getId());
-		result.setName(topic.getBaseName(0).getBaseNameString().get_value());
-		result.setType(getTermType(topic));
+		outTerm.setInspireThemes(getInspireThemes(inTopic));
 
-		result.setInspireThemes(getInspireThemes(topic));
-
-    	if (isGemet(topic)) {
+    	if (isGemet(inTopic)) {
     		// if GEMET, then the title is used for the title in SNSTopic and, in case UMTHES is different
     		// the UMTHES value is stored in alternateTitle
-    		result.setAlternateName(result.getName());
-    		result.setName(getGemetName(topic));
-    		result.setAlternateId(getGemetId(topic));
+    		outTerm.setAlternateName(outTerm.getName());
+    		outTerm.setName(getGemetName(inTopic));
+    		outTerm.setAlternateId(getGemetId(inTopic));
     	}
 
-    	return result;
+    	return outTerm;
+    }
+
+    /** Creates a RelatedTerm list from the given TopicMapFragment.<br/>
+     * @param sourceTopicId id of the topic to get related terms for
+     * @param mapFragment sns result of relations (getPSI)
+     * @param checkExpired if true checks topics whether expired and REMOVES expired ones
+     * @return the related terms NEVER NULL
+     */
+    public List<RelatedTerm> mapToRelatedTerms(String sourceTopicId,
+    		TopicMapFragment mapFragment,
+    		boolean checkExpired) {
+    	List<RelatedTerm> resultList = new ArrayList<RelatedTerm>();
+
+        final Topic[] topics = getTopics(mapFragment);
+        final Association[] associations = getAssociations(mapFragment);
+
+        // iterate through associations to find the correct associations !
+        if (associations != null) {
+            for (Association association : associations) {
+                RelatedTerm relTerm = getBasicRelatedTerm(sourceTopicId, association);
+                if (relTerm != null) {
+                	// determine topic from topic list
+                    for (Topic topic : topics) {
+                        if (relTerm.getId().equals(topic.getId())) {
+                        	// topic found
+                        	// check expired
+                        	if (!checkExpired || !isExpired(topic)) {
+                            	// map data and add to result list
+                            	resultList.add((RelatedTerm)mapToTerm(topic, relTerm));
+                        	}
+                        	break;                        		
+                        }
+                    }
+                }
+            }
+        }
+
+    	return resultList;
     }
 
     /** Creates an Event list from the given topics.<br/>
@@ -260,7 +294,7 @@ public class SNSMapper {
     		}
     	}
     	
-    	result.setLocations(mapToLocations(locTopics.toArray(new Topic[locTopics.size()])));
+    	result.setLocations(mapToLocations(locTopics.toArray(new Topic[locTopics.size()]), true));
     	result.setTerms(mapToTerms(thesaTopics.toArray(new Topic[thesaTopics.size()]), null));
     	result.setEvents(mapToEvents(eventTopics.toArray(new Topic[eventTopics.size()])));
 
@@ -299,6 +333,30 @@ public class SNSMapper {
     	return result;
     }
 
+	/** Get topics from fragment
+	 * @param mapFragment sns result
+	 * @return the topics OR NULL
+	 */
+	public Topic[] getTopics(TopicMapFragment mapFragment) {
+		Topic[] topics = null;
+	    if (null != mapFragment) {
+	    	topics = mapFragment.getTopicMap().getTopic();
+	    }
+	    return topics;
+	}
+	
+	/** Get associations from fragment
+	 * @param mapFragment sns result
+	 * @return the associations OR NULL
+	 */
+	private Association[] getAssociations(TopicMapFragment mapFragment) {
+		Association[] associations = null;
+	    if (null != mapFragment) {
+	    	associations = mapFragment.getTopicMap().getAssociation();
+	    }
+	    return associations;
+	}
+	
     private TopicType getTopicType(Topic topic) {
 		String instance = topic.getInstanceOf()[0].getTopicRef().getHref();
 //		log.debug("InstanceOf: "+instance);
@@ -350,6 +408,52 @@ public class SNSMapper {
 			return TermType.NODE_LABEL;
     }
 
+    /**
+     * Determine whether the given association is a relation between terms and get
+     * basic data of the relation to the target term (from source) encapsulated in a RelationTerm
+     * containing PARTIAL info (id of target term, type of relation)
+     * @param sourceTermId the id of the source term the association was determined from 
+     * @param assoc an SNS association of the source term
+     * @return the found related term OR NULL (if no association to a term)
+     */
+    private RelatedTerm getBasicRelatedTerm(String sourceTermId, Association assoc) {
+    	RelatedTerm result = null;
+    	
+        final String assocType = assoc.getInstanceOf().getTopicRef().getHref();
+        boolean isHierarchyRelation = assocType.endsWith("narrowerTermAssoc");
+
+        if (isHierarchyRelation ||
+        		assocType.endsWith("relatedTermsAssoc") ||
+        		assocType.endsWith("synonymAssoc")) {
+        	// we have a relation between terms !
+        	result = new RelatedTermImpl();
+
+        	// determine target term id and relation details !
+            final Member[] members = assoc.getMember();
+            for (Member member : members) {
+                String targetTermId = member.getTopicRef()[0].getHref();
+                if (!targetTermId.equals(sourceTermId)) {
+                    // here is only the topic id available
+                	result.setId(targetTermId);
+                	// default relation ! TermType determines whether synonym or descriptor !  
+                	result.setRelationType(RelationType.RELATIVE);
+                	
+                	// if hierarchy relation determine whether parent or child !  
+                	if (isHierarchyRelation) {
+                        final String assocMember = member.getRoleSpec().getTopicRef().getHref();
+                        if (assocMember.endsWith("widerTermMember")) {
+                        	result.setRelationType(RelationType.PARENT);
+                        } else {
+                        	result.setRelationType(RelationType.CHILD);
+                        }
+                	}
+                }
+            }
+        }
+
+        return result;
+    }
+
     private boolean isGemet(Topic topic) {
     	Occurrence occ = getOccurrence(topic, "gemet1.0");
     	if (null != occ) {
@@ -357,6 +461,33 @@ public class SNSMapper {
     	}
     	
     	return false;
+    }
+
+    private boolean isExpired(Topic topic) {
+        Date expDate = null;
+        Occurrence[] occurrences = topic.getOccurrence();
+        if (null != occurrences) {
+            for (Occurrence occ : occurrences) {
+                final InstanceOf instanceOf = occ.getInstanceOf();
+                if (instanceOf != null) {
+                    final String type = instanceOf.getTopicRef().getHref();
+                    if (type.endsWith("expiredOcc")) {
+                        try {
+                            expDate = expiredDateParser.parse(occ.getResourceData().get_value());
+                        } catch (ParseException e) {
+                            log.error("Not expected date format in sns expiredOcc.", e);
+                        }
+                    }
+                }
+            }
+        }
+
+        boolean isExpired = false;
+        if (expDate != null) {
+        	isExpired = expDate.before(new Date());
+        }
+
+        return isExpired;
     }
 
     private String getGemetName(Topic topic) {
