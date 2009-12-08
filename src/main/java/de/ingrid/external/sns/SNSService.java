@@ -1,6 +1,7 @@
 package de.ingrid.external.sns;
 
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.ResourceBundle;
@@ -104,9 +105,11 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 	}
 
 	@Override
-	public String[] getRelatedNamesFromName(String name, Locale language) {
-		// TODO Auto-generated method stub
-		return null;
+	public Term[] getTermsFromName(String name, Locale language) {
+    	Topic[] topics = snsGetSimilarTerms(name, language);
+    	List<Term> resultList = snsMapper.mapToTerms(topics, null);
+
+	    return resultList.toArray(new Term[resultList.size()]);
 	}
 
 	@Override
@@ -179,6 +182,37 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 	    	topics = mapFragment.getTopicMap().getTopic();
 	    }
 	    return topics;
+	}
+	
+	/** Call SNS getSimilarTerms. Map passed params to according SNS params. */
+	private Topic[] snsGetSimilarTerms(String queryTerm, Locale language) {
+    	String langFilter = getSNSLanguageFilter(language);
+
+    	TopicMapFragment mapFragment = null;
+    	try {
+    		mapFragment = snsClient.getSimilarTerms(true, new String[] { queryTerm }, langFilter);
+    	} catch (Exception e) {
+	    	log.error("Error calling snsClient.getSimilarTerms", e);
+	    }
+
+        final List<Topic> resultList = new ArrayList<Topic>();
+        final List<String> duplicateList = new ArrayList<String>();
+	    if (null != mapFragment) {
+	    	Topic[] topics = mapFragment.getTopicMap().getTopic();
+	        if (null != topics) {
+	            for (Topic topic : topics) {
+	                final String topicId = topic.getId();
+	                if (!duplicateList.contains(topicId)) {
+	                    if (!topicId.startsWith("_Interface")) {
+	                        resultList.add(topic);
+	                    }
+	                    duplicateList.add(topicId);
+	                }
+	            }
+	        }
+	    }
+
+	    return resultList.toArray(new Topic[resultList.size()]);
 	}
 	
 	/** Call SNS getPSI. Map passed params to according SNS params. */

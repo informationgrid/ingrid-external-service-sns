@@ -63,6 +63,30 @@ public class ThesaurusTest extends TestCase {
 		assertNull(term);
 	}
 
+	public final void testGetTermsFromName() {
+		Term[] terms;
+
+		// german term
+		String name = "Wasser";
+		Locale locale = Locale.GERMAN;
+		
+		terms = thesaurusService.getTermsFromName(name, locale);
+		assertTrue(terms.length > 0);
+		for (Term term : terms) {
+			checkTerm(term);
+		}
+
+		// english term
+		name = "water";
+		locale = Locale.ENGLISH;
+
+		terms = thesaurusService.getTermsFromName(name, locale);
+		assertTrue(terms.length > 0);
+		for (Term term : terms) {
+			checkTerm(term);
+		}
+	}
+
 	public final void testGetTermsFromText() {
 		Term[] terms;
 
@@ -110,7 +134,7 @@ public class ThesaurusTest extends TestCase {
 		}
 
 		// in english ? NOTICE: has different ID ! locale ignored in SNS
-		termId = "t17b6643_115843ddf08_4681"; // forest deterioration
+		termId = "t16e1782_1225eb9489f_-6afd"; // water
 		locale = Locale.ENGLISH;
 		relatedTerms = thesaurusService.getRelatedTermsFromTerm(termId, locale);
 		// NO ENGLISH PROCESSING ! 
