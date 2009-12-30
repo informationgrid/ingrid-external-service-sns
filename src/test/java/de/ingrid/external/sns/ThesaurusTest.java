@@ -56,7 +56,7 @@ public class ThesaurusTest extends TestCase {
 		// TOP NODE_LABEL term (topTermType)
 		termId = "uba_thes_49268"; // Schadstoffe und Abfälle, Umweltverschmutzung
 		term = thesaurusService.getTerm(termId, locale);
-		checkTerm(term, termId, TermType.NODE_LABEL, "Schadstoffe und Abfälle, Umweltverschmutzung");
+		checkTerm(term, termId, TermType.NODE_LABEL, "Schadstoffe und Abf\u00e4lle, Umweltverschmutzung");
 		
 		// INVALID term
 		termId = "wrong id";

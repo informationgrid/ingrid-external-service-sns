@@ -25,7 +25,6 @@ import de.ingrid.external.om.TreeTerm;
 import de.ingrid.external.om.Term.TermType;
 import de.ingrid.external.om.impl.TermImpl;
 import de.ingrid.external.sns.SNSMapper.HierarchyDirection;
-import de.ingrid.iplug.sns.SNSClient;
 
 /**
  * SNS Access implementing abstract gazetteer, thesaurus, fullClassify API (external services).
