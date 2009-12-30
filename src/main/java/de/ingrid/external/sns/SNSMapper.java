@@ -5,8 +5,10 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.ResourceBundle;
 
 import org.apache.log4j.Logger;
@@ -25,6 +27,7 @@ import de.ingrid.external.om.IndexedDocument;
 import de.ingrid.external.om.Location;
 import de.ingrid.external.om.RelatedTerm;
 import de.ingrid.external.om.Term;
+import de.ingrid.external.om.TreeTerm;
 import de.ingrid.external.om.RelatedTerm.RelationType;
 import de.ingrid.external.om.Term.TermType;
 import de.ingrid.external.om.impl.EventImpl;
@@ -33,11 +36,15 @@ import de.ingrid.external.om.impl.IndexedDocumentImpl;
 import de.ingrid.external.om.impl.LocationImpl;
 import de.ingrid.external.om.impl.RelatedTermImpl;
 import de.ingrid.external.om.impl.TermImpl;
+import de.ingrid.external.om.impl.TreeTermImpl;
 
 /**
  * Singleton encapsulating methods for mapping SNS data structures to API beans.
  */
 public class SNSMapper {
+
+    /** Direction of a hierarchy operation for mapping of results */
+    public enum HierarchyDirection { DOWN, UP }
 
 	private final static Logger log = Logger.getLogger(SNSMapper.class);
 	private final static SimpleDateFormat expiredDateParser = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.S");
@@ -46,7 +53,7 @@ public class SNSMapper {
 
     // Settings
     private ResourceBundle resourceBundle; 
-	private String SNS_NATIVE_KEY_PREFIX; 
+	private String SNS_NATIVE_KEY_PREFIX;
 
     /** The three main SNS topic types */
     private enum TopicType {EVENT, LOCATION, THESA}
@@ -178,13 +185,13 @@ public class SNSMapper {
     	return outTerm;
     }
 
-    /** Creates a RelatedTerm list from the given TopicMapFragment.<br/>
-     * @param sourceTopicId id of the topic to get related terms for
-     * @param mapFragment sns result of relations (getPSI)
+    /** Creates a RelatedTerm list from the given TopicMapFragment (result of relation operation).<br/>
+     * @param fromTopicId id of the topic to get related terms for
+     * @param mapFragment sns result of relation operation (getPSI)
      * @param checkExpired if true checks topics whether expired and REMOVES expired ones
      * @return the related terms NEVER NULL
      */
-    public List<RelatedTerm> mapToRelatedTerms(String sourceTopicId,
+    public List<RelatedTerm> mapToRelatedTerms(String fromTopicId,
     		TopicMapFragment mapFragment,
     		boolean checkExpired) {
     	List<RelatedTerm> resultList = new ArrayList<RelatedTerm>();
@@ -195,24 +202,132 @@ public class SNSMapper {
         // iterate through associations to find the correct associations !
         if (associations != null) {
             for (Association association : associations) {
-                RelatedTerm relTerm = getBasicRelatedTerm(sourceTopicId, association);
+                RelatedTerm relTerm = getRelatedTermBasics(fromTopicId, association);
                 if (relTerm != null) {
-                	// determine topic from topic list
-                    for (Topic topic : topics) {
-                        if (relTerm.getId().equals(topic.getId())) {
-                        	// topic found
-                        	// check expired
-                        	if (!checkExpired || !isExpired(topic)) {
-                            	// map data and add to result list
-                            	resultList.add((RelatedTerm)mapToTerm(topic, relTerm));
-                        	}
-                        	break;                        		
-                        }
-                    }
+                	final Topic foundTopic = getTopicById(topics, relTerm.getId(), checkExpired);
+                	if (foundTopic != null) {
+                    	resultList.add((RelatedTerm)mapToTerm(foundTopic, relTerm));                		
+                	}
                 }
             }
         }
 
+    	return resultList;
+    }
+
+    /** Creates a hierarchy list of tree terms dependent from hierarchy operation.<br/>
+     * @param fromTopicId id of starting topic ! PASS NULL IF ALL TOP TERMS WERE REQUESTED! 
+     * @param whichDirection in which direction was the hierarchy operation performed
+     * @param mapFragment sns result of hierarchy operation (getHierachy)
+     * @param checkExpired if true checks topics whether expired and REMOVES expired ones
+     * @return the according tree terms NEVER NULL
+     */
+    public List<TreeTerm> mapToTreeTerms(String fromTopicId,
+    		HierarchyDirection whichDirection,
+    		TopicMapFragment mapFragment,
+    		boolean checkExpired) {
+        final Topic[] topics = getTopics(mapFragment);
+        final Association[] associations = getAssociations(mapFragment);
+
+        // iterate through associations and set up all according TreeTerms !
+        
+        // all TreeTerrms are stored in Map
+        Map<String, TreeTerm> treeTermMap = new HashMap<String, TreeTerm>();
+        // ids of top terms are stored in list 
+        List<String> topTermIdsList = new ArrayList<String>();
+
+        if (associations != null) {
+            for (Association assoc : associations) {
+
+            	// determine parent and child from association
+                Topic parentTopic = null;
+                Topic childTopic = null;
+                final Member[] members = assoc.getMember();
+                for (Member member : members) {
+                	final Topic foundTopic =
+                		getTopicById(topics, member.getTopicRef()[0].getHref(), checkExpired);
+
+                    final String assocMember = member.getRoleSpec().getTopicRef().getHref();
+                    if (assocMember.endsWith("#narrowerTermMember")) {
+                        childTopic = foundTopic;
+                    } else if (assocMember.endsWith("#widerTermMember")) {
+                        parentTopic = foundTopic;
+                    }
+                }
+
+                // set up according tree terms !
+                if ((null != parentTopic) && (null != childTopic)) {
+                    TreeTerm parentTreeTerm = null;
+                    if (treeTermMap.containsKey(parentTopic.getId())) {
+                        parentTreeTerm = treeTermMap.get(parentTopic.getId());
+                    } else {
+                    	parentTreeTerm = (TreeTerm) mapToTerm(parentTopic, new TreeTermImpl());
+                        treeTermMap.put(parentTopic.getId(), parentTreeTerm);
+                    }
+                    TreeTerm childTreeTerm = null;
+                    if (treeTermMap.containsKey(childTopic.getId())) {
+                    	childTreeTerm = treeTermMap.get(childTopic.getId());
+                    } else {
+                    	childTreeTerm = (TreeTerm) mapToTerm(childTopic, new TreeTermImpl());
+                        treeTermMap.put(childTopic.getId(), childTreeTerm);
+                    }
+
+                    // set up parent child relation in TreeTerms
+                    parentTreeTerm.addChild(childTreeTerm);
+                    childTreeTerm.setParent(parentTreeTerm);
+                    
+                    // remember top nodes if top nodes were requested !
+                    if (fromTopicId == null &&
+                    		parentTopic.getInstanceOf(0).getTopicRef().getHref().endsWith("#topTermType")) {
+                    	if (!topTermIdsList.contains(parentTreeTerm.getId())) {
+                    		topTermIdsList.add(parentTreeTerm.getId());	
+                    	}
+                    }
+                }
+            }
+        } else {
+        	// NO ASSOCIATIONS ! But we may have a topic !
+        	// e.g. when TOP TERM and hierarchy is UP or leaf term and hierarchy is DOWN !
+        	// we just map all topics with NO parent or child data
+        	if (topics != null) {
+        		for (Topic topic : topics) {
+                    treeTermMap.put(topic.getId(), (TreeTerm) mapToTerm(topic, new TreeTermImpl()));
+        		}
+        	}
+        }
+
+        // set up return list dependent from request
+        List<TreeTerm> resultList = new ArrayList<TreeTerm>();
+        
+        if (fromTopicId == null) {
+            // top terms request
+        	for (String topTermId : topTermIdsList) {
+        		resultList.add(treeTermMap.get(topTermId));
+        	}
+        } else {
+        	// hierarchy request        	
+        	// fetch start term
+        	TreeTerm startTerm = treeTermMap.get(fromTopicId);
+        	if (startTerm != null) {
+            	if (whichDirection == HierarchyDirection.DOWN) {
+            		// DOWN ! startTerm isn't part of list. If leaf the no children !
+            		if (startTerm.getChildren() != null) {
+                		for (Term childTerm : startTerm.getChildren()) {
+                			resultList.add(treeTermMap.get(childTerm.getId()));
+                		}            			
+            		}
+            	} else {
+            		// UP ! startTerm is first term in list.
+            		resultList.add(startTerm);
+            		TreeTerm retTerm = startTerm;
+            		while (retTerm.getParent() != null) {
+            			retTerm = treeTermMap.get(retTerm.getParent().getId());
+            			resultList.add(retTerm);
+            		}
+            	}
+        	}
+        }
+        
     	return resultList;
     }
 
@@ -345,6 +460,26 @@ public class SNSMapper {
 	    return topics;
 	}
 	
+    /** Return topic with given id from topic list.
+     * @param topics list of topics
+     * @param topicId id of topic to extract from list
+     * @param checkExpired if true checks whether topic is expired
+     * @return the found topic or NULL if topic not found or is expired (if requested)
+     */
+    private Topic getTopicById(Topic[] topics, String topicId, boolean checkExpired) {
+    	// determine topic from topic list
+        for (Topic topic : topics) {
+            if (topicId.equals(topic.getId())) {
+            	// topic found, check expired if requested
+            	if (!checkExpired || !isExpired(topic)) {
+                	return topic;
+            	}
+            }
+        }
+
+        return null;
+    }
+
 	/** Get associations from fragment
 	 * @param mapFragment sns result
 	 * @return the associations OR NULL
@@ -409,14 +544,14 @@ public class SNSMapper {
     }
 
     /**
-     * Determine whether the given association is a relation between terms and get
-     * basic data of the relation to the target term (from source) encapsulated in a RelationTerm
-     * containing PARTIAL info (id of target term, type of relation)
-     * @param sourceTermId the id of the source term the association was determined from 
-     * @param assoc an SNS association of the source term
+     * Determine whether the given association is a relation of the passed from-term
+     * to another term (to-term) and get basic data of the relation encapsulated in a
+     * RelationTerm (id of to-term, type of relation)
+     * @param fromTermId the id of the from-term the association was determined from 
+     * @param assoc an SNS association of the from-term
      * @return the found related term OR NULL (if no association to a term)
      */
-    private RelatedTerm getBasicRelatedTerm(String sourceTermId, Association assoc) {
+    private RelatedTerm getRelatedTermBasics(String fromTermId, Association assoc) {
     	RelatedTerm result = null;
     	
         final String assocType = assoc.getInstanceOf().getTopicRef().getHref();
@@ -431,10 +566,10 @@ public class SNSMapper {
         	// determine target term id and relation details !
             final Member[] members = assoc.getMember();
             for (Member member : members) {
-                String targetTermId = member.getTopicRef()[0].getHref();
-                if (!targetTermId.equals(sourceTermId)) {
+                String toTermId = member.getTopicRef()[0].getHref();
+                if (!toTermId.equals(fromTermId)) {
                     // here is only the topic id available
-                	result.setId(targetTermId);
+                	result.setId(toTermId);
                 	// default relation ! TermType determines whether synonym or descriptor !  
                 	result.setRelationType(RelationType.RELATIVE);
                 	

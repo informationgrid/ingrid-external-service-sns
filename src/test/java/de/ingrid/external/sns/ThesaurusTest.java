@@ -6,6 +6,7 @@ import junit.framework.TestCase;
 import de.ingrid.external.ThesaurusService;
 import de.ingrid.external.om.RelatedTerm;
 import de.ingrid.external.om.Term;
+import de.ingrid.external.om.TreeTerm;
 import de.ingrid.external.om.RelatedTerm.RelationType;
 import de.ingrid.external.om.Term.TermType;
 
@@ -155,6 +156,83 @@ public class ThesaurusTest extends TestCase {
 		assertTrue(relatedTerms.length == 0);
 	}
 
+	public final void testGetHierarchyNextLevel() {
+		TreeTerm[] treeTerms;
+
+		// TOP TERMS in german
+		String termId = null;
+		Locale locale = Locale.GERMAN;
+		treeTerms = thesaurusService.getHierarchyNextLevel(termId, locale);
+		assertTrue(treeTerms.length > 0);
+		for (TreeTerm treeTerm : treeTerms) {
+			assertNull(treeTerm.getParent());
+			checkTreeTerm(treeTerm, false, true);
+		}
+
+		// in english ? NO RESULTS only german supported by SNS ! 
+		locale = Locale.ENGLISH;
+		treeTerms = thesaurusService.getHierarchyNextLevel(termId, locale);
+		assertTrue(treeTerms.length == 0);
+
+		// SUB TERMS of top term
+		termId = "uba_thes_49268"; // Schadstoffe und Abfälle, Umweltverschmutzung
+		locale = Locale.GERMAN;
+		treeTerms = thesaurusService.getHierarchyNextLevel(termId, locale);
+		assertTrue(treeTerms.length > 0);
+		for (TreeTerm treeTerm : treeTerms) {
+			// NOT checking children of children, there are leafs !  
+			checkTreeTerm(treeTerm, true, false);
+		}
+
+		// SUB TERMS of leaf
+		termId = "uba_thes_40787"; // Kleinmenge
+		treeTerms = thesaurusService.getHierarchyNextLevel(termId, locale);
+		assertNotNull(treeTerms);
+		assertTrue(treeTerms.length == 0);
+
+/*
+		// INVALID term, SNS throws Exception !
+		termId = "wrong id";
+		treeTerms = thesaurusService.getHierarchyNextLevel(termId, locale);
+		assertNotNull(treeTerms);
+		assertTrue(treeTerms.length == 0);
+*/
+	}
+
+	public final void testGetHierarchyPathToTop() {
+		TreeTerm[] treeTerms;
+
+		// PATH OF SUB TERM in german
+		String termId = "uba_thes_13093"; // Immissionsdaten
+		Locale locale = Locale.GERMAN;
+		treeTerms = thesaurusService.getHierarchyPathToTop(termId, locale);
+		assertTrue(treeTerms.length > 0);
+		assertEquals(termId, treeTerms[0].getId());
+		for (TreeTerm treeTerm : treeTerms) {
+			checkTreeTerm(treeTerm, false, false);
+		}
+
+		// PATH OF TOP TERM
+		termId = "uba_thes_49268"; // Schadstoffe und Abfälle, Umweltverschmutzung
+		treeTerms = thesaurusService.getHierarchyPathToTop(termId, locale);
+		assertTrue(treeTerms.length == 1);
+		assertEquals(termId, treeTerms[0].getId());
+/*
+		// in english ? NO RESULTS only german supported by SNS !
+		termId = "t16e1782_1225eb9489f_-6afd"; // water
+		locale = Locale.ENGLISH;
+		treeTerms = thesaurusService.getHierarchyPathToTop(termId, locale);
+		assertTrue(treeTerms.length == 0);
+
+		// INVALID term, SNS throws Exception !
+		termId = "wrong id";
+		locale = Locale.GERMAN;
+		treeTerms = thesaurusService.getHierarchyPathToTop(termId, locale);
+		assertNotNull(treeTerms);
+		assertTrue(treeTerms.length == 0);
+*/
+	}
+
 	private void checkTerm(Term term) {
 		checkTerm(term, null, null, null);
 	}
@@ -173,6 +251,7 @@ public class ThesaurusTest extends TestCase {
 			assertEquals(name, term.getName());
 		}
 	}
+
 	private void checkRelatedTerm(RelatedTerm term) {
 		checkRelatedTerm(term, null, null, null, null);
 	}
@@ -182,5 +261,16 @@ public class ThesaurusTest extends TestCase {
 			assertEquals(relType, relTerm.getRelationType());			
 		}
 		checkTerm(relTerm, termId, termType, termName);
+	}
+
+	private void checkTreeTerm(TreeTerm term,
+			boolean checkParent, boolean checkChildren) {
+		if (checkParent) {
+			assertNotNull(term.getParent());
+		}
+		if (checkChildren) {
+			assertNotNull(term.getChildren());
+		}
+		checkTerm(term);
 	}
 }

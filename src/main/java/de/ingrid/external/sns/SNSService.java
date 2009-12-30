@@ -24,6 +24,7 @@ import de.ingrid.external.om.Term;
 import de.ingrid.external.om.TreeTerm;
 import de.ingrid.external.om.Term.TermType;
 import de.ingrid.external.om.impl.TermImpl;
+import de.ingrid.external.sns.SNSMapper.HierarchyDirection;
 import de.ingrid.iplug.sns.SNSClient;
 
 /**
@@ -94,14 +95,37 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 
 	@Override
 	public TreeTerm[] getHierarchyNextLevel(String termId, Locale language) {
-		// TODO Auto-generated method stub
-		return null;
+		long depth = 2;
+		HierarchyDirection direction = HierarchyDirection.DOWN;
+		boolean includeSiblings = false;
+		// if top terms wanted adapt parameters
+		if (termId == null) {
+			// depth 1 is enough, fetches children of top terms
+			depth = 1;
+		}
+
+		TopicMapFragment mapFragment = snsGetHierarchy(termId,
+				depth, direction, includeSiblings, language);
+
+    	List<TreeTerm> resultList =
+    		snsMapper.mapToTreeTerms(termId, direction, mapFragment, false);
+
+	    return resultList.toArray(new TreeTerm[resultList.size()]);
 	}
 
 	@Override
 	public TreeTerm[] getHierarchyPathToTop(String termId, Locale language) {
-		// TODO Auto-generated method stub
-		return null;
+		long depth = 0; // fetches till top
+		HierarchyDirection direction = HierarchyDirection.UP;
+		boolean includeSiblings = false;
+
+		TopicMapFragment mapFragment = snsGetHierarchy(termId,
+				depth, direction, includeSiblings, language);
+
+    	List<TreeTerm> resultList =
+    		snsMapper.mapToTreeTerms(termId, direction, mapFragment, false);
+
+	    return resultList.toArray(new TreeTerm[resultList.size()]);
 	}
 
 	@Override
@@ -162,6 +186,8 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 
 		return result;
 	}
+
+    // ----------------------- PRIVATE -----------------------------------
 
 	/** Call SNS findTopics. Map passed params to according SNS params. */
 	private Topic[] snsFindTopics(String queryTerms,
@@ -269,6 +295,27 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     	return mapFragment;
     }
 
+	/** Call SNS getHierachy. Map passed params to according SNS params. */
+	private TopicMapFragment snsGetHierarchy(String root,
+			long depth, HierarchyDirection hierarchyDir, boolean includeSiblings,
+			Locale language) {
+		if (root == null) {
+			root = "toplevel";
+		}
+		String direction = (hierarchyDir == HierarchyDirection.DOWN) ? "down" : "up";
+    	String langFilter = getSNSLanguageFilter(language);
+
+    	TopicMapFragment mapFragment = null;
+    	try {
+            mapFragment = snsClient.getHierachy("narrowerTermAssoc", depth, direction,
+                    includeSiblings, langFilter, root);
+    	} catch (Exception e) {
+	    	log.error("Error calling snsClient.getHierachy with root=" + root, e);
+	    }
+	    
+	    return mapFragment;
+	}
+	
 	/** Determine location path for SNS dependent from passed query type.
 	 * @param typeOfQuery query type from request, pass null if default location path !
 	 * @return SNS location path
