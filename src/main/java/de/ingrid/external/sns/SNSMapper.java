@@ -293,7 +293,7 @@ public class SNSMapper {
 
                     // set up parent child relation in TreeTerms
                     parentTreeTerm.addChild(childTreeTerm);
-                    childTreeTerm.setParent(parentTreeTerm);
+                    childTreeTerm.addParent(parentTreeTerm);
                     
                     // remember top nodes if top nodes were requested !
                     if (fromTopicId == null &&
@@ -329,7 +329,7 @@ public class SNSMapper {
         	TreeTerm startTerm = treeTermMap.get(fromTopicId);
         	if (startTerm != null) {
             	if (whichDirection == HierarchyDirection.DOWN) {
-            		// DOWN ! startTerm isn't part of list. If leaf the no children !
+            		// DOWN ! startTerm isn't part of list. If leaf then no children !
             		if (startTerm.getChildren() != null) {
                 		for (Term childTerm : startTerm.getChildren()) {
                 			resultList.add(treeTermMap.get(childTerm.getId()));
@@ -338,11 +338,6 @@ public class SNSMapper {
             	} else {
             		// UP ! startTerm is first term in list.
             		resultList.add(startTerm);
-            		TreeTerm retTerm = startTerm;
-            		while (retTerm.getParent() != null) {
-            			retTerm = treeTermMap.get(retTerm.getParent().getId());
-            			resultList.add(retTerm);
-            		}
             	}
         	}
         }

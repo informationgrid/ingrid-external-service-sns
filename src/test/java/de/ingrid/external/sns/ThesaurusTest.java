@@ -167,7 +167,8 @@ public class ThesaurusTest extends TestCase {
 		treeTerms = thesaurusService.getHierarchyNextLevel(termId, locale);
 		assertTrue(treeTerms.length > 0);
 		for (TreeTerm treeTerm : treeTerms) {
-			assertNull(treeTerm.getParent());
+			// all top terms have null as parents and do have children !
+			assertNull(treeTerm.getParents());
 			checkTreeTerm(treeTerm, false, true);
 		}
 
@@ -182,8 +183,10 @@ public class ThesaurusTest extends TestCase {
 		treeTerms = thesaurusService.getHierarchyNextLevel(termId, locale);
 		assertTrue(treeTerms.length > 0);
 		for (TreeTerm treeTerm : treeTerms) {
-			// NOT checking children of children, there are leafs !  
+			// NOT checking children of children, there are leafs !  but check parent (ALWAYS SET)
 			checkTreeTerm(treeTerm, true, false);
+			// parent is term with passed id !
+			assertEquals(termId, treeTerm.getParents().get(0).getId());
 		}
 
 		// SUB TERMS of leaf
@@ -202,23 +205,31 @@ public class ThesaurusTest extends TestCase {
 	}
 
 	public final void testGetHierarchyPathToTop() {
-		TreeTerm[] treeTerms;
+		TreeTerm startTerm;
 
 		// PATH OF SUB TERM in german
+		// NOTICE: has 2 paths to top !
+		// 1. uba_thes_13093 / uba_thes_47403 / uba_thes_47404 / uba_thes_49276
+		// 2. uba_thes_13093 / uba_thes_13133 / uba_thes_49268
 		String termId = "uba_thes_13093"; // Immissionsdaten
 		Locale locale = Locale.GERMAN;
-		treeTerms = thesaurusService.getHierarchyPathToTop(termId, locale);
-		assertTrue(treeTerms.length > 0);
-		assertEquals(termId, treeTerms[0].getId());
-		for (TreeTerm treeTerm : treeTerms) {
-			checkTreeTerm(treeTerm, false, false);
+		startTerm = thesaurusService.getHierarchyPathToTop(termId, locale);
+		// start term is term with requested id
+		assertEquals(termId, startTerm.getId());
+		// has 2 parents
+		assertTrue(startTerm.getParents().size() == 2);
+		// all parents have further parent and also start term as child
+		for (TreeTerm parentTerm : startTerm.getParents()) {
+			checkTreeTerm(parentTerm, true, true);
 		}
 
 		// PATH OF TOP TERM
 		termId = "uba_thes_49268"; // Schadstoffe und Abfälle, Umweltverschmutzung
-		treeTerms = thesaurusService.getHierarchyPathToTop(termId, locale);
-		assertTrue(treeTerms.length == 1);
-		assertEquals(termId, treeTerms[0].getId());
+		startTerm = thesaurusService.getHierarchyPathToTop(termId, locale);
+		// start term is term with requested id
+		assertEquals(termId, startTerm.getId());
+		// has NO parent
+		assertNull(startTerm.getParents());
 /*
 		// in english ? NO RESULTS only german supported by SNS !
 		termId = "t16e1782_1225eb9489f_-6afd"; // water
@@ -268,7 +279,7 @@ public class ThesaurusTest extends TestCase {
 	private void checkTreeTerm(TreeTerm term,
 			boolean checkParent, boolean checkChildren) {
 		if (checkParent) {
-			assertNotNull(term.getParent());
+			assertNotNull(term.getParents());
 		}
 		if (checkChildren) {
 			assertNotNull(term.getChildren());

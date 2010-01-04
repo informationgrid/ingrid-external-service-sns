@@ -120,7 +120,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 	}
 
 	@Override
-	public TreeTerm[] getHierarchyPathToTop(String termId, Locale language) {
+	public TreeTerm getHierarchyPathToTop(String termId, Locale language) {
 		long depth = 0; // fetches till top
 		HierarchyDirection direction = HierarchyDirection.UP;
 		boolean includeSiblings = false;
@@ -132,7 +132,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     	List<TreeTerm> resultList =
     		snsMapper.mapToTreeTerms(termId, direction, mapFragment, false, langFilter);
 
-	    return resultList.toArray(new TreeTerm[resultList.size()]);
+	    return resultList.get(0);
 	}
 
 	@Override
