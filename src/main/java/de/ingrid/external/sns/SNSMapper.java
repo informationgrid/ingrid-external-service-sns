@@ -16,9 +16,11 @@ import org.apache.log4j.Logger;
 import com.slb.taxi.webservice.xtm.stubs.TopicMapFragment;
 import com.slb.taxi.webservice.xtm.stubs.TopicMapFragmentIndexedDocument;
 import com.slb.taxi.webservice.xtm.stubs.xtm.Association;
+import com.slb.taxi.webservice.xtm.stubs.xtm.BaseName;
 import com.slb.taxi.webservice.xtm.stubs.xtm.InstanceOf;
 import com.slb.taxi.webservice.xtm.stubs.xtm.Member;
 import com.slb.taxi.webservice.xtm.stubs.xtm.Occurrence;
+import com.slb.taxi.webservice.xtm.stubs.xtm.Scope;
 import com.slb.taxi.webservice.xtm.stubs.xtm.Topic;
 
 import de.ingrid.external.om.Event;
@@ -75,10 +77,11 @@ public class SNSMapper {
     /** Creates a Location list from the given topics.<br/>
      * @param topics sns topics representing locations
      * @param checkExpired if true checks topics whether expired and REMOVES expired ones
+     * @param langFilter pass requested SNS language for mapping of title ... 
      * @return the locations NEVER NULL (but may be empty)
      */
     public List<Location> mapToLocations(Topic[] topics,
-    		boolean checkExpired) {
+    		boolean checkExpired, String langFilter) {
     	List<Location> resultList = new ArrayList<Location>();
 
     	if ((null != topics)) {
@@ -87,7 +90,7 @@ public class SNSMapper {
             		continue;
             	}
 
-        		resultList.add(mapToLocation(topic, new LocationImpl()));
+        		resultList.add(mapToLocation(topic, new LocationImpl(), langFilter));
 			}
         }
     	
@@ -97,11 +100,12 @@ public class SNSMapper {
     /** Creates a Location from the given topic.<br/>
      * @param topic sns topic representing location
      * @param outLocation the location the topic is mapped to, NEVER NULL 
+     * @param langFilter pass requested SNS language for mapping of title ... 
      * @return again the outLocation after mapping, NEVER NULL
      */
-    public Location mapToLocation(Topic topic, Location outLocation) {
+    public Location mapToLocation(Topic topic, Location outLocation, String langFilter) {
     	outLocation.setId(topic.getId());
-    	outLocation.setName(topic.getBaseName(0).getBaseNameString().get_value());
+    	outLocation.setName(getTopicTitle(topic, langFilter));
     	String typeId = topic.getInstanceOf(0).getTopicRef().getHref();
     	typeId = typeId.substring(typeId.lastIndexOf("#")+1);
     	outLocation.setTypeId(typeId);
@@ -143,9 +147,10 @@ public class SNSMapper {
     /** Creates a Term list from the given topics.<br/>
      * @param topics sns topics representing terms
      * @param filter only use topics matching the given type, remove the other ones ! Pass null if all types
+     * @param langFilter pass requested SNS language for mapping of title ... 
      * @return the terms NEVER NULL
      */
-    public List<Term> mapToTerms(Topic[] topics, TermType filter) {
+    public List<Term> mapToTerms(Topic[] topics, TermType filter, String langFilter) {
     	List<Term> resultList = new ArrayList<Term>();
 
     	if ((null != topics)) {
@@ -155,7 +160,7 @@ public class SNSMapper {
             			continue;
             		}
             	}
-    			resultList.add(mapToTerm(topic, new TermImpl()));
+    			resultList.add(mapToTerm(topic, new TermImpl(), langFilter));
 			}
         }
     	
@@ -165,11 +170,12 @@ public class SNSMapper {
     /** Creates a Term from the given topic.<br/>
      * @param inTopic sns topic representing a term
      * @param outTerm the term the topic is mapped to, NEVER NULL 
+     * @param langFilter pass requested SNS language for mapping of title ... 
      * @return again the outTerm after mapping, NEVER NULL
      */
-    public Term mapToTerm(Topic inTopic, Term outTerm) {
+    public Term mapToTerm(Topic inTopic, Term outTerm, String langFilter) {
 		outTerm.setId(inTopic.getId());
-		outTerm.setName(inTopic.getBaseName(0).getBaseNameString().get_value());
+		outTerm.setName(getTopicTitle(inTopic, langFilter));
 		outTerm.setType(getTermType(inTopic));
 
 		outTerm.setInspireThemes(getInspireThemes(inTopic));
@@ -189,11 +195,13 @@ public class SNSMapper {
      * @param fromTopicId id of the topic to get related terms for
      * @param mapFragment sns result of relation operation (getPSI)
      * @param checkExpired if true checks topics whether expired and REMOVES expired ones
+     * @param langFilter pass requested SNS language for mapping of title ... 
      * @return the related terms NEVER NULL
      */
     public List<RelatedTerm> mapToRelatedTerms(String fromTopicId,
     		TopicMapFragment mapFragment,
-    		boolean checkExpired) {
+    		boolean checkExpired,
+    		String langFilter) {
     	List<RelatedTerm> resultList = new ArrayList<RelatedTerm>();
 
         final Topic[] topics = getTopics(mapFragment);
@@ -206,7 +214,7 @@ public class SNSMapper {
                 if (relTerm != null) {
                 	final Topic foundTopic = getTopicById(topics, relTerm.getId(), checkExpired);
                 	if (foundTopic != null) {
-                    	resultList.add((RelatedTerm)mapToTerm(foundTopic, relTerm));                		
+                    	resultList.add((RelatedTerm)mapToTerm(foundTopic, relTerm, langFilter));                		
                 	}
                 }
             }
@@ -220,12 +228,16 @@ public class SNSMapper {
      * @param whichDirection in which direction was the hierarchy operation performed
      * @param mapFragment sns result of hierarchy operation (getHierachy)
      * @param checkExpired if true checks topics whether expired and REMOVES expired ones
+     * @param langFilter Only deliver results of this language. We need additional filtering
+     * 		cause SNS delivers results of different languages from first request. Pass NULL
+     * 		if all languages ! 
      * @return the according tree terms NEVER NULL
      */
     public List<TreeTerm> mapToTreeTerms(String fromTopicId,
     		HierarchyDirection whichDirection,
     		TopicMapFragment mapFragment,
-    		boolean checkExpired) {
+    		boolean checkExpired,
+    		String langFilter) {
         final Topic[] topics = getTopics(mapFragment);
         final Association[] associations = getAssociations(mapFragment);
 
@@ -246,6 +258,13 @@ public class SNSMapper {
                 for (Member member : members) {
                 	final Topic foundTopic =
                 		getTopicById(topics, member.getTopicRef()[0].getHref(), checkExpired);
+                	
+                	// check additional filtering of language if requested !
+                	if (langFilter != null) {
+                		if (!isLanguage(foundTopic, langFilter)) {
+                			continue;
+                		}
+                	}
 
                     final String assocMember = member.getRoleSpec().getTopicRef().getHref();
                     if (assocMember.endsWith("#narrowerTermMember")) {
@@ -261,14 +280,14 @@ public class SNSMapper {
                     if (treeTermMap.containsKey(parentTopic.getId())) {
                         parentTreeTerm = treeTermMap.get(parentTopic.getId());
                     } else {
-                    	parentTreeTerm = (TreeTerm) mapToTerm(parentTopic, new TreeTermImpl());
+                    	parentTreeTerm = (TreeTerm) mapToTerm(parentTopic, new TreeTermImpl(), langFilter);
                         treeTermMap.put(parentTopic.getId(), parentTreeTerm);
                     }
                     TreeTerm childTreeTerm = null;
                     if (treeTermMap.containsKey(childTopic.getId())) {
                     	childTreeTerm = treeTermMap.get(childTopic.getId());
                     } else {
-                    	childTreeTerm = (TreeTerm) mapToTerm(childTopic, new TreeTermImpl());
+                    	childTreeTerm = (TreeTerm) mapToTerm(childTopic, new TreeTermImpl(), langFilter);
                         treeTermMap.put(childTopic.getId(), childTreeTerm);
                     }
 
@@ -291,7 +310,7 @@ public class SNSMapper {
         	// we just map all topics with NO parent or child data
         	if (topics != null) {
         		for (Topic topic : topics) {
-                    treeTermMap.put(topic.getId(), (TreeTerm) mapToTerm(topic, new TreeTermImpl()));
+                    treeTermMap.put(topic.getId(), (TreeTerm) mapToTerm(topic, new TreeTermImpl(), langFilter));
         		}
         	}
         }
@@ -381,9 +400,10 @@ public class SNSMapper {
 
     /** Creates a FullClassifyResult from the given mapFragment
      * @param inMap result of fullClassify as delivered by SNS
+     * @param langFilter pass requested SNS language for mapping of title ... 
      * @return the FullClassifyResult NEVER NULL
      */
-    public FullClassifyResult mapToFullClassifyResult(TopicMapFragment inMap) {
+    public FullClassifyResult mapToFullClassifyResult(TopicMapFragment inMap, String langFilter) {
     	FullClassifyResultImpl result = new FullClassifyResultImpl();
     	
     	result.setIndexedDocument(mapToIndexedDocument(inMap.getIndexedDocument()));
@@ -409,8 +429,8 @@ public class SNSMapper {
     		}
     	}
     	
-    	result.setLocations(mapToLocations(locTopics.toArray(new Topic[locTopics.size()]), true));
-    	result.setTerms(mapToTerms(thesaTopics.toArray(new Topic[thesaTopics.size()]), null));
+    	result.setLocations(mapToLocations(locTopics.toArray(new Topic[locTopics.size()]), true, langFilter));
+    	result.setTerms(mapToTerms(thesaTopics.toArray(new Topic[thesaTopics.size()]), null, langFilter));
     	result.setEvents(mapToEvents(eventTopics.toArray(new Topic[eventTopics.size()])));
 
     	return result;
@@ -511,6 +531,24 @@ public class SNSMapper {
 		}
     }
 
+    private String getTopicTitle(Topic topic, String langFilter) {
+        BaseName[] baseNames = topic.getBaseName();
+        // Set a default if for the selected language nothing exists.
+        String title = baseNames[0].getBaseNameString().get_value();
+        for (int i = 0; i < baseNames.length; i++) {
+            final Scope scope = baseNames[i].getScope();
+            if (scope != null) {
+                final String href = scope.getTopicRef()[0].getHref();
+                if (href.endsWith('#' + langFilter)) {
+                    title = baseNames[i].getBaseNameString().get_value();
+                    break;
+                }
+            }
+        }
+        
+        return title;
+    }
+
     private Occurrence getOccurrence(Topic topic, String occurrenceType) {
     	Occurrence result = null;
     	
@@ -587,6 +625,21 @@ public class SNSMapper {
         }
 
         return result;
+    }
+
+    private boolean isLanguage(Topic topic, String langFilter) {
+        BaseName[] baseNames = topic.getBaseName();
+        for (int i = 0; i < baseNames.length; i++) {
+            final Scope scope = baseNames[i].getScope();
+            if (scope != null) {
+                final String href = scope.getTopicRef()[0].getHref();
+                if (href.endsWith('#' + langFilter)) {
+                	return true;
+                }
+            }
+        }
+        
+        return false;
     }
 
     private boolean isGemet(Topic topic) {

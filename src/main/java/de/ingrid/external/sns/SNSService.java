@@ -63,9 +63,11 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 
 	@Override
 	public Location[] getRelatedLocationsFromLocation(String locationId, Locale language) {
+    	String langFilter = getSNSLanguageFilter(language);
+
     	// no language in SNS for getPSI !!!
     	Topic[] topics = snsMapper.getTopics(snsGetPSI(locationId, SNS_FILTER_LOCATIONS));
-    	List<Location> resultList = snsMapper.mapToLocations(topics, true);
+    	List<Location> resultList = snsMapper.mapToLocations(topics, true, langFilter);
 
 	    return resultList.toArray(new Location[resultList.size()]);
 	}
@@ -73,8 +75,10 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 	@Override
 	public Location[] getLocationsFromText(String text, int analyzeMaxWords,
 			boolean ignoreCase, Locale language) {
-    	Topic[] topics = snsAutoClassifyText(text, analyzeMaxWords, SNS_FILTER_LOCATIONS, ignoreCase, language);
-    	List<Location> resultList = snsMapper.mapToLocations(topics, true);
+    	String langFilter = getSNSLanguageFilter(language);
+
+    	Topic[] topics = snsAutoClassifyText(text, analyzeMaxWords, SNS_FILTER_LOCATIONS, ignoreCase, langFilter);
+    	List<Location> resultList = snsMapper.mapToLocations(topics, true, langFilter);
 
 	    return resultList.toArray(new Location[resultList.size()]);
 	}
@@ -83,9 +87,10 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 	public Location[] getLocationsFromQueryTerms(String queryTerms,
 			QueryType typeOfQuery, Locale language) {
     	String path = getSNSLocationPath(typeOfQuery);
+    	String langFilter = getSNSLanguageFilter(language);
 
-    	Topic[] topics = snsFindTopics(queryTerms, path, language);
-    	List<Location> resultList = snsMapper.mapToLocations(topics, true);
+    	Topic[] topics = snsFindTopics(queryTerms, path, langFilter);
+    	List<Location> resultList = snsMapper.mapToLocations(topics, true, langFilter);
 
 	    return resultList.toArray(new Location[resultList.size()]);
 	}
@@ -97,6 +102,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 		long depth = 2;
 		HierarchyDirection direction = HierarchyDirection.DOWN;
 		boolean includeSiblings = false;
+    	String langFilter = getSNSLanguageFilter(language);
 		// if top terms wanted adapt parameters
 		if (termId == null) {
 			// depth 1 is enough, fetches children of top terms
@@ -104,10 +110,11 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 		}
 
 		TopicMapFragment mapFragment = snsGetHierarchy(termId,
-				depth, direction, includeSiblings, language);
+				depth, direction, includeSiblings, langFilter);
 
+		// we also need language for additional filtering ! SNS delivers wrong results ! 
     	List<TreeTerm> resultList =
-    		snsMapper.mapToTreeTerms(termId, direction, mapFragment, false);
+    		snsMapper.mapToTreeTerms(termId, direction, mapFragment, false, langFilter);
 
 	    return resultList.toArray(new TreeTerm[resultList.size()]);
 	}
@@ -117,30 +124,35 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 		long depth = 0; // fetches till top
 		HierarchyDirection direction = HierarchyDirection.UP;
 		boolean includeSiblings = false;
+    	String langFilter = getSNSLanguageFilter(language);
 
 		TopicMapFragment mapFragment = snsGetHierarchy(termId,
-				depth, direction, includeSiblings, language);
+				depth, direction, includeSiblings, langFilter);
 
     	List<TreeTerm> resultList =
-    		snsMapper.mapToTreeTerms(termId, direction, mapFragment, false);
+    		snsMapper.mapToTreeTerms(termId, direction, mapFragment, false, langFilter);
 
 	    return resultList.toArray(new TreeTerm[resultList.size()]);
 	}
 
 	@Override
 	public Term[] getTermsFromName(String name, Locale language) {
-    	Topic[] topics = snsGetSimilarTerms(name, language);
-    	List<Term> resultList = snsMapper.mapToTerms(topics, null);
+    	String langFilter = getSNSLanguageFilter(language);
+
+    	Topic[] topics = snsGetSimilarTerms(name, langFilter);
+    	List<Term> resultList = snsMapper.mapToTerms(topics, null, langFilter);
 
 	    return resultList.toArray(new Term[resultList.size()]);
 	}
 
 	@Override
 	public RelatedTerm[] getRelatedTermsFromTerm(String termId, Locale language) {
+    	String langFilter = getSNSLanguageFilter(language);
+
     	// no language in SNS for getPSI !!!
 		TopicMapFragment mapFragment = snsGetPSI(termId, SNS_FILTER_THESA);
 
-    	List<RelatedTerm> resultList = snsMapper.mapToRelatedTerms(termId, mapFragment, false);
+    	List<RelatedTerm> resultList = snsMapper.mapToRelatedTerms(termId, mapFragment, false, langFilter);
 
 	    return resultList.toArray(new RelatedTerm[resultList.size()]);
 	}
@@ -148,13 +160,14 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 	@Override
 	public Term getTerm(String termId, Locale language) {
     	Term result = null;
+    	String langFilter = getSNSLanguageFilter(language);
 
     	// no language in SNS for getPSI !!!
     	Topic[] topics = snsMapper.getTopics(snsGetPSI(termId, SNS_FILTER_THESA));
     	if (topics != null) {
             for (Topic topic : topics) {
             	if (topic.getId().equals(termId)) {
-            		result = snsMapper.mapToTerm(topic, new TermImpl());
+            		result = snsMapper.mapToTerm(topic, new TermImpl(), langFilter);
             		break;
             	}
             }
@@ -166,8 +179,10 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 	@Override
 	public Term[] getTermsFromText(String text, int analyzeMaxWords,
 			boolean ignoreCase, Locale language) {
-    	Topic[] topics = snsAutoClassifyText(text, analyzeMaxWords, SNS_FILTER_THESA, ignoreCase, language);
-    	List<Term> resultList = snsMapper.mapToTerms(topics, TermType.DESCRIPTOR);
+    	String langFilter = getSNSLanguageFilter(language);
+
+    	Topic[] topics = snsAutoClassifyText(text, analyzeMaxWords, SNS_FILTER_THESA, ignoreCase, langFilter);
+    	List<Term> resultList = snsMapper.mapToTerms(topics, TermType.DESCRIPTOR, langFilter);
 
 	    return resultList.toArray(new Term[resultList.size()]);
 	}
@@ -178,10 +193,11 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 	public FullClassifyResult autoClassifyURL(URL url, int analyzeMaxWords,
 			boolean ignoreCase, Locale language) {
 		String filter = null;
+    	String langFilter = getSNSLanguageFilter(language);
 
 		TopicMapFragment mapFragment =
-			snsAutoClassifyURL(url, analyzeMaxWords, filter, ignoreCase, language);
-		FullClassifyResult result = snsMapper.mapToFullClassifyResult(mapFragment);
+			snsAutoClassifyURL(url, analyzeMaxWords, filter, ignoreCase, langFilter);
+		FullClassifyResult result = snsMapper.mapToFullClassifyResult(mapFragment, langFilter);
 
 		return result;
 	}
@@ -190,10 +206,9 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 
 	/** Call SNS findTopics. Map passed params to according SNS params. */
 	private Topic[] snsFindTopics(String queryTerms,
-			String path, Locale language) {
+			String path, String langFilter) {
 		Topic[] topics = null;
 		SearchType searchType = SearchType.beginsWith;
-    	String langFilter = getSNSLanguageFilter(language);
 
     	TopicMapFragment mapFragment = null;
     	try {
@@ -210,9 +225,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 	}
 	
 	/** Call SNS getSimilarTerms. Map passed params to according SNS params. */
-	private Topic[] snsGetSimilarTerms(String queryTerm, Locale language) {
-    	String langFilter = getSNSLanguageFilter(language);
-
+	private Topic[] snsGetSimilarTerms(String queryTerm, String langFilter) {
     	TopicMapFragment mapFragment = null;
     	try {
     		mapFragment = snsClient.getSimilarTerms(true, new String[] { queryTerm }, langFilter);
@@ -254,10 +267,8 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 	
 	/** Call SNS autoClassify. Map passed params to according SNS params. */
 	private Topic[] snsAutoClassifyText(String text,
-			int analyzeMaxWords, String filter, boolean ignoreCase, Locale language) {
+			int analyzeMaxWords, String filter, boolean ignoreCase, String langFilter) {
 		Topic[] topics = null;
-    	String langFilter = getSNSLanguageFilter(language);
-
     	TopicMapFragment mapFragment = null;
     	try {
     		mapFragment = snsClient.autoClassify(text, analyzeMaxWords, filter, ignoreCase, langFilter);
@@ -273,9 +284,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 
 	/** Call SNS autoClassify. Map passed params to according SNS params. */
     private TopicMapFragment snsAutoClassifyURL(URL url,
-    		int analyzeMaxWords, String filter, boolean ignoreCase, Locale language) {
-    	String langFilter = getSNSLanguageFilter(language);
-
+    		int analyzeMaxWords, String filter, boolean ignoreCase, String langFilter) {
     	TopicMapFragment mapFragment = null;
     	try {
     		mapFragment = snsClient.autoClassifyToUrl(url.toString(), analyzeMaxWords, filter, ignoreCase, langFilter);
@@ -297,12 +306,11 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 	/** Call SNS getHierachy. Map passed params to according SNS params. */
 	private TopicMapFragment snsGetHierarchy(String root,
 			long depth, HierarchyDirection hierarchyDir, boolean includeSiblings,
-			Locale language) {
+			String langFilter) {
 		if (root == null) {
 			root = "toplevel";
 		}
 		String direction = (hierarchyDir == HierarchyDirection.DOWN) ? "down" : "up";
-    	String langFilter = getSNSLanguageFilter(language);
 
     	TopicMapFragment mapFragment = null;
     	try {

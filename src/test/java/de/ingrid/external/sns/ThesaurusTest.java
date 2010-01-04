@@ -108,7 +108,9 @@ public class ThesaurusTest extends TestCase {
 		locale = Locale.ENGLISH;
 
 		terms = thesaurusService.getTermsFromText(text, analyzeMaxWords, ignoreCase, locale);
+		// normally we get results ! but we also had no results !? 
 		assertTrue(terms.length > 0);
+//		assertTrue(terms.length == 0);
 		for (Term term : terms) {
 			checkTerm(term, null, TermType.DESCRIPTOR, null);
 		}
