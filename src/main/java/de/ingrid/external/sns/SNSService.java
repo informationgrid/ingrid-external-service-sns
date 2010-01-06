@@ -136,10 +136,10 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 	}
 
 	@Override
-	public Term[] getTermsFromName(String name, Locale language) {
+	public Term[] getSimilarTermsFromNames(String[] names, boolean ignoreCase, Locale language) {
     	String langFilter = getSNSLanguageFilter(language);
 
-    	Topic[] topics = snsGetSimilarTerms(name, langFilter);
+    	Topic[] topics = snsGetSimilarTerms(names, ignoreCase, langFilter);
     	List<Term> resultList = snsMapper.mapToTerms(topics, null, langFilter);
 
 	    return resultList.toArray(new Term[resultList.size()]);
@@ -225,10 +225,10 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 	}
 	
 	/** Call SNS getSimilarTerms. Map passed params to according SNS params. */
-	private Topic[] snsGetSimilarTerms(String queryTerm, String langFilter) {
+	private Topic[] snsGetSimilarTerms(String[] queryTerms, boolean ignoreCase, String langFilter) {
     	TopicMapFragment mapFragment = null;
     	try {
-    		mapFragment = snsClient.getSimilarTerms(true, new String[] { queryTerm }, langFilter);
+    		mapFragment = snsClient.getSimilarTerms(ignoreCase, queryTerms, langFilter);
     	} catch (Exception e) {
 	    	log.error("Error calling snsClient.getSimilarTerms", e);
 	    }
