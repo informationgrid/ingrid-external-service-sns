@@ -87,9 +87,11 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 	public Location[] findLocationsFromQueryTerm(String queryTerm,
 			QueryType typeOfQuery, Locale language) {
     	String path = getSNSLocationPath(typeOfQuery);
+    	boolean addDescriptors = false;
     	String langFilter = getSNSLanguageFilter(language);
 
-    	Topic[] topics = snsFindTopics(queryTerm, path, SearchType.beginsWith, langFilter);
+    	Topic[] topics = snsFindTopics(queryTerm, path, SearchType.beginsWith,
+    			addDescriptors, langFilter);
     	List<Location> resultList = snsMapper.mapToLocations(topics, true, langFilter);
 
 	    return resultList.toArray(new Location[resultList.size()]);
@@ -98,11 +100,13 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     // ----------------------- ThesaurusService -----------------------------------
 
 	@Override
-	public Term[] findTermsFromQueryTerm(String queryTerm, MatchingType matching, Locale language) {
+	public Term[] findTermsFromQueryTerm(String queryTerm, MatchingType matching,
+			boolean addDescriptors, Locale language) {
     	SearchType searchType = getSNSSearchType(matching);
     	String langFilter = getSNSLanguageFilter(language);
 
-    	Topic[] topics = snsFindTopics(queryTerm, SNS_FILTER_THESA, searchType, langFilter);
+    	Topic[] topics = snsFindTopics(queryTerm, SNS_FILTER_THESA, searchType,
+    			addDescriptors, langFilter);
     	List<Term> resultList = snsMapper.mapToTerms(topics, null, langFilter);
 
 	    return resultList.toArray(new Term[resultList.size()]);
@@ -217,13 +221,13 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 
 	/** Call SNS findTopics. Map passed params to according SNS params. */
 	private Topic[] snsFindTopics(String queryTerms,
-			String path, SearchType searchType, String langFilter) {
+			String path, SearchType searchType, boolean addDescriptors, String langFilter) {
 		Topic[] topics = null;
 
     	TopicMapFragment mapFragment = null;
     	try {
     		mapFragment = snsClient.findTopics(queryTerms, path, searchType,
-    	            FieldsType.captors, 0, langFilter, false);
+    	            FieldsType.captors, 0, langFilter, addDescriptors);
     	} catch (Exception e) {
 	    	log.error("Error calling snsClient.findTopics", e);
 	    }

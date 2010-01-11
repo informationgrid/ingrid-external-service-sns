@@ -31,9 +31,11 @@ public class ThesaurusTest extends TestCase {
 		// german locations
 		String queryTerm = "Wasser";
 		MatchingType matchingType = MatchingType.BEGINS_WITH;
+		boolean addDescriptors = false;
 		Locale locale = Locale.GERMAN;
 		
-		terms = thesaurusService.findTermsFromQueryTerm(queryTerm, matchingType,  locale);
+		terms = thesaurusService.findTermsFromQueryTerm(queryTerm, matchingType,
+				addDescriptors, locale);
 		assertNotNull(terms);
 		assertEquals(20, terms.length);
 		for (Term term : terms) {
@@ -41,9 +43,19 @@ public class ThesaurusTest extends TestCase {
 		}
 
 		matchingType = MatchingType.EXACT;
-		terms = thesaurusService.findTermsFromQueryTerm(queryTerm, matchingType,  locale);
+		terms = thesaurusService.findTermsFromQueryTerm(queryTerm, matchingType,
+				addDescriptors, locale);
 		assertNotNull(terms);
 		assertEquals(16, terms.length);
+		for (Term term : terms) {
+			checkTerm(term, null, null, null);
+		}
+
+		addDescriptors = true;
+		terms = thesaurusService.findTermsFromQueryTerm(queryTerm, matchingType,
+				addDescriptors, locale);
+		assertNotNull(terms);
+		assertEquals(26, terms.length);
 		for (Term term : terms) {
 			checkTerm(term, null, null, null);
 		}
@@ -53,9 +65,10 @@ public class ThesaurusTest extends TestCase {
 		matchingType = MatchingType.BEGINS_WITH;
 		locale = Locale.ENGLISH;
 
-		terms = thesaurusService.findTermsFromQueryTerm(queryTerm, matchingType,  locale);
+		terms = thesaurusService.findTermsFromQueryTerm(queryTerm, matchingType,
+				addDescriptors, locale);
 		assertNotNull(terms);
-		assertEquals(4, terms.length);
+		assertEquals(6, terms.length);
 		for (Term term : terms) {
 			checkTerm(term, null, null, null);
 		}
