@@ -78,37 +78,37 @@ public class GazetteerTest extends TestCase {
 		assertTrue(locations.length > 0);
 	}
 
-	public final void testGetLocationsFromQueryTerms() {
+	public final void testFindLocationsFromQueryTerm() {
 		Location[] locations;
 
 		// german locations
-		String queryTerms = "Frankfurt";
+		String queryTerm = "Frankfurt";
 		Locale locale = Locale.GERMAN;
 		
 		// all locations
-		locations = gazetteerService.getLocationsFromQueryTerms(queryTerms,
+		locations = gazetteerService.findLocationsFromQueryTerm(queryTerm,
 				QueryType.ALL_LOCATIONS,
 				locale);
 		assertTrue(locations.length > 0);
 
 		// only administrative locations
-		locations = gazetteerService.getLocationsFromQueryTerms(queryTerms,
+		locations = gazetteerService.findLocationsFromQueryTerm(queryTerm,
 				QueryType.ONLY_ADMINISTRATIVE_LOCATIONS,
 				locale);
 		assertTrue(locations.length > 0);
 
 		// english results
-		queryTerms = "Frankfurt";
+		queryTerm = "Frankfurt";
 		locale = Locale.ENGLISH;
 
 		// all locations
-		locations = gazetteerService.getLocationsFromQueryTerms(queryTerms,
+		locations = gazetteerService.findLocationsFromQueryTerm(queryTerm,
 				QueryType.ALL_LOCATIONS,
 				locale);
 		assertTrue(locations.length > 0);
 
 		// only administrative locations
-		locations = gazetteerService.getLocationsFromQueryTerms(queryTerms,
+		locations = gazetteerService.findLocationsFromQueryTerm(queryTerm,
 				QueryType.ONLY_ADMINISTRATIVE_LOCATIONS,
 				locale);
 		assertTrue(locations.length > 0);

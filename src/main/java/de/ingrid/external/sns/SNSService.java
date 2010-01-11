@@ -84,18 +84,29 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 	}
 
 	@Override
-	public Location[] getLocationsFromQueryTerms(String queryTerms,
+	public Location[] findLocationsFromQueryTerm(String queryTerm,
 			QueryType typeOfQuery, Locale language) {
     	String path = getSNSLocationPath(typeOfQuery);
     	String langFilter = getSNSLanguageFilter(language);
 
-    	Topic[] topics = snsFindTopics(queryTerms, path, langFilter);
+    	Topic[] topics = snsFindTopics(queryTerm, path, SearchType.beginsWith, langFilter);
     	List<Location> resultList = snsMapper.mapToLocations(topics, true, langFilter);
 
 	    return resultList.toArray(new Location[resultList.size()]);
 	}
 
     // ----------------------- ThesaurusService -----------------------------------
+
+	@Override
+	public Term[] findTermsFromQueryTerm(String queryTerm, MatchingType matching, Locale language) {
+    	SearchType searchType = getSNSSearchType(matching);
+    	String langFilter = getSNSLanguageFilter(language);
+
+    	Topic[] topics = snsFindTopics(queryTerm, SNS_FILTER_THESA, searchType, langFilter);
+    	List<Term> resultList = snsMapper.mapToTerms(topics, null, langFilter);
+
+	    return resultList.toArray(new Term[resultList.size()]);
+	}
 
 	@Override
 	public TreeTerm[] getHierarchyNextLevel(String termId, Locale language) {
@@ -206,9 +217,8 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 
 	/** Call SNS findTopics. Map passed params to according SNS params. */
 	private Topic[] snsFindTopics(String queryTerms,
-			String path, String langFilter) {
+			String path, SearchType searchType, String langFilter) {
 		Topic[] topics = null;
-		SearchType searchType = SearchType.beginsWith;
 
     	TopicMapFragment mapFragment = null;
     	try {
@@ -335,6 +345,19 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     	}
 		
     	return path;
+	}
+
+	/** Determine SearchType for SNS dependent from passed matching type. */
+	private SearchType getSNSSearchType(MatchingType matchingType) {
+		// default is all locations !
+    	SearchType searchType = SearchType.beginsWith;
+    	if (matchingType == MatchingType.CONTAINS) {
+    		searchType = SearchType.contains;
+    	} else if (matchingType == MatchingType.EXACT) {
+    		searchType = SearchType.exact;    		
+    	}
+		
+    	return searchType;
 	}
 
 	/** Determine language filter for SNS dependent from passed language !

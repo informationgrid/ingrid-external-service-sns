@@ -4,6 +4,7 @@ import java.util.Locale;
 
 import junit.framework.TestCase;
 import de.ingrid.external.ThesaurusService;
+import de.ingrid.external.ThesaurusService.MatchingType;
 import de.ingrid.external.om.RelatedTerm;
 import de.ingrid.external.om.Term;
 import de.ingrid.external.om.TreeTerm;
@@ -24,6 +25,42 @@ public class ThesaurusTest extends TestCase {
 		thesaurusService = snsService;
 	}
 	
+	public final void testFindTermsFromQueryTerm() {
+		Term[] terms;
+
+		// german locations
+		String queryTerm = "Wasser";
+		MatchingType matchingType = MatchingType.BEGINS_WITH;
+		Locale locale = Locale.GERMAN;
+		
+		terms = thesaurusService.findTermsFromQueryTerm(queryTerm, matchingType,  locale);
+		assertNotNull(terms);
+		assertEquals(20, terms.length);
+		for (Term term : terms) {
+			checkTerm(term, null, null, null);
+		}
+
+		matchingType = MatchingType.EXACT;
+		terms = thesaurusService.findTermsFromQueryTerm(queryTerm, matchingType,  locale);
+		assertNotNull(terms);
+		assertEquals(16, terms.length);
+		for (Term term : terms) {
+			checkTerm(term, null, null, null);
+		}
+
+		// english results
+		queryTerm = "fine dust";
+		matchingType = MatchingType.BEGINS_WITH;
+		locale = Locale.ENGLISH;
+
+		terms = thesaurusService.findTermsFromQueryTerm(queryTerm, matchingType,  locale);
+		assertNotNull(terms);
+		assertEquals(4, terms.length);
+		for (Term term : terms) {
+			checkTerm(term, null, null, null);
+		}
+	}
+
 	public final void testGetTerm() {
 		Term term;
 
