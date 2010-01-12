@@ -136,10 +136,10 @@ public class SNSMapper {
         			}
         		}
         	}
-    	}
 
-    	if (outLocation.getQualifier() == null)
-    		outLocation.setQualifier(outLocation.getTypeId());
+        	if (outLocation.getQualifier() == null)
+        		outLocation.setQualifier(outLocation.getTypeId());
+    	}
 
     	return outLocation;
     }

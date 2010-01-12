@@ -85,13 +85,12 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 
 	@Override
 	public Location[] findLocationsFromQueryTerm(String queryTerm,
-			QueryType typeOfQuery, Locale language) {
+			QueryType typeOfQuery, de.ingrid.external.GazetteerService.MatchingType matching, Locale language) {
     	String path = getSNSLocationPath(typeOfQuery);
-    	boolean addDescriptors = false;
+    	SearchType searchType = getSNSSearchType(matching);
     	String langFilter = getSNSLanguageFilter(language);
 
-    	Topic[] topics = snsFindTopics(queryTerm, path, SearchType.beginsWith,
-    			addDescriptors, langFilter);
+    	Topic[] topics = snsFindTopics(queryTerm, path, searchType,	false, langFilter);
     	List<Location> resultList = snsMapper.mapToLocations(topics, true, langFilter);
 
 	    return resultList.toArray(new Location[resultList.size()]);
@@ -100,7 +99,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     // ----------------------- ThesaurusService -----------------------------------
 
 	@Override
-	public Term[] findTermsFromQueryTerm(String queryTerm, MatchingType matching,
+	public Term[] findTermsFromQueryTerm(String queryTerm, de.ingrid.external.ThesaurusService.MatchingType matching,
 			boolean addDescriptors, Locale language) {
     	SearchType searchType = getSNSSearchType(matching);
     	String langFilter = getSNSLanguageFilter(language);
@@ -352,12 +351,25 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 	}
 
 	/** Determine SearchType for SNS dependent from passed matching type. */
-	private SearchType getSNSSearchType(MatchingType matchingType) {
+	private SearchType getSNSSearchType(de.ingrid.external.ThesaurusService.MatchingType matchingType) {
 		// default is all locations !
     	SearchType searchType = SearchType.beginsWith;
-    	if (matchingType == MatchingType.CONTAINS) {
+    	if (matchingType == de.ingrid.external.ThesaurusService.MatchingType.CONTAINS) {
     		searchType = SearchType.contains;
-    	} else if (matchingType == MatchingType.EXACT) {
+    	} else if (matchingType == de.ingrid.external.ThesaurusService.MatchingType.EXACT) {
+    		searchType = SearchType.exact;    		
+    	}
+		
+    	return searchType;
+	}
+
+	/** Determine SearchType for SNS dependent from passed matching type. */
+	private SearchType getSNSSearchType(de.ingrid.external.GazetteerService.MatchingType matchingType) {
+		// default is all locations !
+    	SearchType searchType = SearchType.beginsWith;
+    	if (matchingType == de.ingrid.external.GazetteerService.MatchingType.CONTAINS) {
+    		searchType = SearchType.contains;
+    	} else if (matchingType == de.ingrid.external.GazetteerService.MatchingType.EXACT) {
     		searchType = SearchType.exact;    		
     	}
 		
