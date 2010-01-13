@@ -143,7 +143,7 @@ public class SNSMapper {
         	}
 
         	if (outLocation.getQualifier() == null)
-        		outLocation.setQualifier(outLocation.getTypeId());
+        		outLocation.setQualifier(outLocation.getTypeName());
     	}
 
     	return outLocation;
