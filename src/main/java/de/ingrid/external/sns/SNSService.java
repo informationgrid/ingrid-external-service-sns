@@ -67,7 +67,9 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 
     	// no language in SNS for getPSI !!!
     	Topic[] topics = snsMapper.getTopics(snsGetPSI(locationId, SNS_FILTER_LOCATIONS));
-    	List<Location> resultList = snsMapper.mapToLocations(topics, true, langFilter);
+
+    	boolean checkExpired = true;
+    	List<Location> resultList = snsMapper.mapToLocations(topics, checkExpired, langFilter);
 
 	    return resultList.toArray(new Location[resultList.size()]);
 	}
@@ -78,7 +80,9 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     	String langFilter = getSNSLanguageFilter(language);
 
     	Topic[] topics = snsAutoClassifyText(text, analyzeMaxWords, SNS_FILTER_LOCATIONS, ignoreCase, langFilter);
-    	List<Location> resultList = snsMapper.mapToLocations(topics, true, langFilter);
+
+    	boolean checkExpired = true;
+    	List<Location> resultList = snsMapper.mapToLocations(topics, checkExpired, langFilter);
 
 	    return resultList.toArray(new Location[resultList.size()]);
 	}
@@ -89,9 +93,12 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     	String path = getSNSLocationPath(typeOfQuery);
     	SearchType searchType = getSNSSearchType(matching);
     	String langFilter = getSNSLanguageFilter(language);
+    	boolean addDescriptors = false;
 
-    	Topic[] topics = snsFindTopics(queryTerm, path, searchType,	false, langFilter);
-    	List<Location> resultList = snsMapper.mapToLocations(topics, true, langFilter);
+    	Topic[] topics = snsFindTopics(queryTerm, path, searchType,	addDescriptors, langFilter);
+
+    	boolean checkExpired = true;
+    	List<Location> resultList = snsMapper.mapToLocations(topics, checkExpired, langFilter);
 
 	    return resultList.toArray(new Location[resultList.size()]);
 	}
@@ -126,9 +133,10 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 		TopicMapFragment mapFragment = snsGetHierarchy(termId,
 				depth, direction, includeSiblings, langFilter);
 
-		// we also need language for additional filtering ! SNS delivers wrong results ! 
+		// we also need language for additional filtering ! SNS delivers wrong results !
+    	boolean checkExpired = false; // expired not set for thesa topics in SNS !
     	List<TreeTerm> resultList =
-    		snsMapper.mapToTreeTerms(termId, direction, mapFragment, false, langFilter);
+    		snsMapper.mapToTreeTerms(termId, direction, mapFragment, checkExpired, langFilter);
 
 	    return resultList.toArray(new TreeTerm[resultList.size()]);
 	}
@@ -143,8 +151,9 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 		TopicMapFragment mapFragment = snsGetHierarchy(termId,
 				depth, direction, includeSiblings, langFilter);
 
+    	boolean checkExpired = false; // expired not set for thesa topics in SNS !
     	List<TreeTerm> resultList =
-    		snsMapper.mapToTreeTerms(termId, direction, mapFragment, false, langFilter);
+    		snsMapper.mapToTreeTerms(termId, direction, mapFragment, checkExpired, langFilter);
 
 	    return resultList.get(0);
 	}
@@ -166,7 +175,8 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     	// no language in SNS for getPSI !!!
 		TopicMapFragment mapFragment = snsGetPSI(termId, SNS_FILTER_THESA);
 
-    	List<RelatedTerm> resultList = snsMapper.mapToRelatedTerms(termId, mapFragment, false, langFilter);
+    	boolean checkExpired = false; // expired not set for thesa topics in SNS !
+    	List<RelatedTerm> resultList = snsMapper.mapToRelatedTerms(termId, mapFragment, checkExpired, langFilter);
 
 	    return resultList.toArray(new RelatedTerm[resultList.size()]);
 	}

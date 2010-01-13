@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.MissingResourceException;
 import java.util.ResourceBundle;
 
 import org.apache.log4j.Logger;
@@ -109,7 +110,11 @@ public class SNSMapper {
     	String typeId = topic.getInstanceOf(0).getTopicRef().getHref();
     	typeId = typeId.substring(typeId.lastIndexOf("#")+1);
     	outLocation.setTypeId(typeId);
-    	outLocation.setTypeName(resourceBundle.getString("sns.topic.ref."+typeId));
+    	String typeName = typeId;
+    	try {
+    		typeName = resourceBundle.getString("sns.topic.ref."+typeId);
+    	} catch (MissingResourceException ex) {}
+    	outLocation.setTypeName(typeName);
 
     	// If the topic doesn't contain any more information return the basic info
     	if (topic.getOccurrence() != null) {
