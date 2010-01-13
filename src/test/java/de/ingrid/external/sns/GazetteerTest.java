@@ -59,6 +59,44 @@ public class GazetteerTest extends TestCase {
 		assertTrue(locations.length == 0);
 	}
 
+	public final void testGetLocation() {
+		Location location;
+
+		// valid location in german
+		String locationId = "BERG41128"; // Großer Buchberg
+		Locale locale = Locale.GERMAN;
+		location = gazetteerService.getLocation(locationId, locale);
+		checkLocation(location, locationId, "Gro\u00DFer Buchberg");
+		assertEquals("Berg", location.getTypeName());
+
+		// in english ?  SAME NAME because locale ignored by SNS, id determines language !
+		// NO ENGLISH LOCATIONS IN SNS !!!
+		locale = Locale.ENGLISH;
+		location = gazetteerService.getLocation(locationId, locale);
+		checkLocation(location, locationId, "Gro\u00DFer Buchberg");
+
+		// valid location. NOTICE: locale ignored
+		locationId = "NATURPARK31"; // Hessischer Spessart
+		location = gazetteerService.getLocation(locationId, locale);
+		checkLocation(location, locationId, "Hessischer Spessart");
+		assertEquals("Naturpark", location.getTypeName());
+
+		// valid location. NOTICE: locale ignored
+		locationId = "GEMEINDE0641200000"; // Frankfurt am Main
+		location = gazetteerService.getLocation(locationId, locale);
+		checkLocation(location, locationId, "Frankfurt am Main");
+		assertEquals("Gemeinde", location.getTypeName());
+		assertEquals("Stadt", location.getQualifier());
+		assertEquals("06412000", location.getNativeKey());
+		assertNotNull(location.getBoundingBox());
+
+		// INVALID location
+		locationId = "wrong id";
+		locale = Locale.GERMAN;
+		location = gazetteerService.getLocation(locationId, locale);
+		assertNull(location);
+	}
+
 	public final void testGetLocationsFromText() {
 		Location[] locations;
 

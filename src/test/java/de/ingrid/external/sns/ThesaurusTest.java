@@ -114,7 +114,7 @@ public class ThesaurusTest extends TestCase {
 		assertNull(term);
 	}
 
-	public final void testGetTermsFromName() {
+	public final void testGetSimilarTermsFromNames() {
 		Term[] terms;
 
 		// german term

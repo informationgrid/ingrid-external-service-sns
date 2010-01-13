@@ -23,6 +23,7 @@ import de.ingrid.external.om.RelatedTerm;
 import de.ingrid.external.om.Term;
 import de.ingrid.external.om.TreeTerm;
 import de.ingrid.external.om.Term.TermType;
+import de.ingrid.external.om.impl.LocationImpl;
 import de.ingrid.external.om.impl.TermImpl;
 import de.ingrid.external.sns.SNSMapper.HierarchyDirection;
 
@@ -72,6 +73,25 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     	List<Location> resultList = snsMapper.mapToLocations(topics, checkExpired, langFilter);
 
 	    return resultList.toArray(new Location[resultList.size()]);
+	}
+
+	@Override
+	public Location getLocation(String locationId, Locale language) {
+    	Location result = null;
+    	String langFilter = getSNSLanguageFilter(language);
+
+    	// no language in SNS for getPSI !!!
+    	Topic[] topics = snsMapper.getTopics(snsGetPSI(locationId, SNS_FILTER_LOCATIONS));
+    	if (topics != null) {
+            for (Topic topic : topics) {
+            	if (topic.getId().equals(locationId)) {
+            		result = snsMapper.mapToLocation(topic, new LocationImpl(), langFilter);
+            		break;
+            	}
+            }
+
+    	}
+	    return result;
 	}
 
 	@Override
