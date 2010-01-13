@@ -2,6 +2,7 @@ package de.ingrid.external.sns;
 
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.ResourceBundle;
@@ -63,14 +64,27 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     // ----------------------- GazetteerService -----------------------------------
 
 	@Override
-	public Location[] getRelatedLocationsFromLocation(String locationId, Locale language) {
+	public Location[] getRelatedLocationsFromLocation(String locationId, 
+			boolean includeFrom, Locale language) {
     	String langFilter = getSNSLanguageFilter(language);
 
     	// no language in SNS for getPSI !!!
+    	// NOTICE: includes location with passed id at FIRST position !
     	Topic[] topics = snsMapper.getTopics(snsGetPSI(locationId, SNS_FILTER_LOCATIONS));
 
     	boolean checkExpired = true;
+    	// NOTICE: includes location with passed id !
     	List<Location> resultList = snsMapper.mapToLocations(topics, checkExpired, langFilter);
+
+    	// filter passed location ?
+    	if (!includeFrom) {
+    		for (Iterator<Location> it = resultList.iterator(); it.hasNext(); ) {
+    			if (locationId.equals(it.next().getId())) {
+    				it.remove();
+    				break;
+    			}
+    		}
+    	}
 
 	    return resultList.toArray(new Location[resultList.size()]);
 	}

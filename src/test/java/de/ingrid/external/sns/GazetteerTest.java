@@ -25,37 +25,49 @@ public class GazetteerTest extends TestCase {
 	public final void testGetRelatedLocationsFromLocation() {
 		Location[] locations;
 
-		// valid location in german
-		String locationId = "BERG41128";
+		// valid location in german, INCLUDE fromLocation
+		String locationId = "BERG41128";  // Großer Buchberg
 		Locale locale = Locale.GERMAN;
-		locations = gazetteerService.getRelatedLocationsFromLocation(locationId, locale);
-		assertTrue(locations.length > 0);
+		locations = gazetteerService.getRelatedLocationsFromLocation(locationId, true, locale);
+		assertEquals(10, locations.length);
+		checkLocation(locations[0], locationId, "Gro\u00DFer Buchberg");
+		for (Location loc : locations) {
+			checkLocation(loc);			
+		}
+
+		// valid location in german, INCLUDE fromLocation
+		locations = gazetteerService.getRelatedLocationsFromLocation(locationId, false, locale);
+		assertEquals(9, locations.length);
+		for (Location loc : locations) {
+			assertTrue(!locationId.equals(loc.getId()));
+			checkLocation(loc);			
+		}
 
 		// in english ?
 		locale = Locale.ENGLISH;
-		locations = gazetteerService.getRelatedLocationsFromLocation(locationId, locale);
+		locations = gazetteerService.getRelatedLocationsFromLocation(locationId, true, locale);
 		assertTrue(locations.length > 0);
 
 		// valid location in german
 		locationId = "NATURPARK31";
 		locale = Locale.GERMAN;
-		locations = gazetteerService.getRelatedLocationsFromLocation(locationId, locale);
+		locations = gazetteerService.getRelatedLocationsFromLocation(locationId, true, locale);
 		assertTrue(locations.length > 0);
 
 		// in english ?
 		locale = Locale.ENGLISH;
-		locations = gazetteerService.getRelatedLocationsFromLocation(locationId, locale);
+		locations = gazetteerService.getRelatedLocationsFromLocation(locationId, true, locale);
 		assertTrue(locations.length > 0);
 
 		// INVALID location in german
 		locationId = "wrong id";
 		locale = Locale.GERMAN;
-		locations = gazetteerService.getRelatedLocationsFromLocation(locationId, locale);
+		locations = gazetteerService.getRelatedLocationsFromLocation(locationId, true, locale);
 		assertTrue(locations.length == 0);
 
 		// in english ?
 		locale = Locale.ENGLISH;
-		locations = gazetteerService.getRelatedLocationsFromLocation(locationId, locale);
+		locations = gazetteerService.getRelatedLocationsFromLocation(locationId, true, locale);
 		assertTrue(locations.length == 0);
 	}
 
