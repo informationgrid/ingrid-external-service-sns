@@ -33,14 +33,16 @@ public class GazetteerTest extends TestCase {
 		checkLocation(locations[0], locationId, "Gro\u00DFer Buchberg");
 		for (Location loc : locations) {
 			checkLocation(loc);			
+			assertFalse(loc.getIsExpired());
 		}
 
-		// valid location in german, INCLUDE fromLocation
+		// valid location in german, DO NOT INCLUDE fromLocation
 		locations = gazetteerService.getRelatedLocationsFromLocation(locationId, false, locale);
 		assertEquals(9, locations.length);
 		for (Location loc : locations) {
 			assertTrue(!locationId.equals(loc.getId()));
 			checkLocation(loc);			
+			assertFalse(loc.getIsExpired());
 		}
 
 		// in english ?
@@ -48,9 +50,19 @@ public class GazetteerTest extends TestCase {
 		locations = gazetteerService.getRelatedLocationsFromLocation(locationId, true, locale);
 		assertTrue(locations.length > 0);
 
+		// EXPIRED !!!! INCLUDE fromLocation ! BUT IS REMOVED BECAUSE EXPIRED !!!!
+		locationId = "GEMEINDE0325300005"; // Gehrden
+		locale = Locale.GERMAN;
+		locations = gazetteerService.getRelatedLocationsFromLocation(locationId, true, locale);
+		assertEquals(9, locations.length);
+		for (Location loc : locations) {
+			checkLocation(loc);
+			assertFalse("GEMEINDE0325300005".equals(loc.getId()));
+			assertFalse(loc.getIsExpired());
+		}
+
 		// valid location in german
 		locationId = "NATURPARK31";
-		locale = Locale.GERMAN;
 		locations = gazetteerService.getRelatedLocationsFromLocation(locationId, true, locale);
 		assertTrue(locations.length > 0);
 
@@ -80,18 +92,21 @@ public class GazetteerTest extends TestCase {
 		location = gazetteerService.getLocation(locationId, locale);
 		checkLocation(location, locationId, "Gro\u00DFer Buchberg");
 		assertEquals("Berg", location.getTypeName());
+		assertFalse(location.getIsExpired());
 
 		// in english ?  SAME NAME because locale ignored by SNS, id determines language !
 		// NO ENGLISH LOCATIONS IN SNS !!!
 		locale = Locale.ENGLISH;
 		location = gazetteerService.getLocation(locationId, locale);
 		checkLocation(location, locationId, "Gro\u00DFer Buchberg");
+		assertFalse(location.getIsExpired());
 
 		// valid location. NOTICE: locale ignored
 		locationId = "NATURPARK31"; // Hessischer Spessart
 		location = gazetteerService.getLocation(locationId, locale);
 		checkLocation(location, locationId, "Hessischer Spessart");
 		assertEquals("Naturpark", location.getTypeName());
+		assertFalse(location.getIsExpired());
 
 		// valid location. NOTICE: locale ignored
 		locationId = "GEMEINDE0641200000"; // Frankfurt am Main
@@ -101,6 +116,13 @@ public class GazetteerTest extends TestCase {
 		assertEquals("Stadt", location.getQualifier());
 		assertEquals("06412000", location.getNativeKey());
 		assertNotNull(location.getBoundingBox());
+		assertFalse(location.getIsExpired());
+
+		// EXPIRED LOCATION !
+		locationId = "GEMEINDE0325300005"; // Gehrden
+		location = gazetteerService.getLocation(locationId, locale);
+		checkLocation(location, locationId, "Gehrden");
+		assertTrue(location.getIsExpired());
 
 		// INVALID location
 		locationId = "wrong id";

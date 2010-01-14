@@ -77,21 +77,22 @@ public class SNSMapper {
 
     /** Creates a Location list from the given topics.<br/>
      * @param topics sns topics representing locations
-     * @param checkExpired if true checks topics whether expired and REMOVES expired ones
+     * @param removeExpired if true checks topics whether expired and REMOVES expired ones
      * @param langFilter pass requested SNS language for mapping of title ... 
      * @return the locations NEVER NULL (but may be empty)
      */
     public List<Location> mapToLocations(Topic[] topics,
-    		boolean checkExpired, String langFilter) {
+    		boolean removeExpired, String langFilter) {
     	List<Location> resultList = new ArrayList<Location>();
 
     	if ((null != topics)) {
+    		boolean checkExpired = !removeExpired;
             for (Topic topic : topics) {
-            	if (checkExpired && isExpired(topic)) {
+            	if (removeExpired && isExpired(topic)) {
             		continue;
             	}
 
-        		resultList.add(mapToLocation(topic, new LocationImpl(), langFilter));
+        		resultList.add(mapToLocation(topic, new LocationImpl(), checkExpired, langFilter));
 			}
         }
     	
@@ -99,12 +100,24 @@ public class SNSMapper {
     }
 
     /** Creates a Location from the given topic.<br/>
+     * NOTICE: also checks whether location topic is expired and sets flag in Location !
      * @param topic sns topic representing location
      * @param outLocation the location the topic is mapped to, NEVER NULL 
      * @param langFilter pass requested SNS language for mapping of title ... 
      * @return again the outLocation after mapping, NEVER NULL
      */
     public Location mapToLocation(Topic topic, Location outLocation, String langFilter) {
+    	return mapToLocation(topic, outLocation, true, langFilter);
+    }
+
+    /** Creates a Location from the given topic.<br/>
+     * @param topic sns topic representing location
+     * @param outLocation the location the topic is mapped to, NEVER NULL 
+     * @param checkExpired if true checks topic whether expired (sets isExpired in location)
+     * @param langFilter pass requested SNS language for mapping of title ... 
+     * @return again the outLocation after mapping, NEVER NULL
+     */
+    private Location mapToLocation(Topic topic, Location outLocation, boolean checkExpired, String langFilter) {
     	outLocation.setId(topic.getId());
     	outLocation.setName(getTopicTitle(topic, langFilter));
     	String typeId = topic.getInstanceOf(0).getTopicRef().getHref();
@@ -144,6 +157,11 @@ public class SNSMapper {
 
         	if (outLocation.getQualifier() == null)
         		outLocation.setQualifier(outLocation.getTypeName());
+        	
+        	// ALSO EXPIRED IF REQUESTED !
+        	if (checkExpired) {
+        		outLocation.setIsExpired(isExpired(topic));
+        	}
     	}
 
     	return outLocation;
@@ -199,13 +217,11 @@ public class SNSMapper {
     /** Creates a RelatedTerm list from the given TopicMapFragment (result of relation operation).<br/>
      * @param fromTopicId id of the topic to get related terms for
      * @param mapFragment sns result of relation operation (getPSI)
-     * @param checkExpired if true checks topics whether expired and REMOVES expired ones
      * @param langFilter pass requested SNS language for mapping of title ... 
      * @return the related terms NEVER NULL
      */
     public List<RelatedTerm> mapToRelatedTerms(String fromTopicId,
     		TopicMapFragment mapFragment,
-    		boolean checkExpired,
     		String langFilter) {
     	List<RelatedTerm> resultList = new ArrayList<RelatedTerm>();
 
@@ -217,7 +233,7 @@ public class SNSMapper {
             for (Association association : associations) {
                 RelatedTerm relTerm = getRelatedTermBasics(fromTopicId, association);
                 if (relTerm != null) {
-                	final Topic foundTopic = getTopicById(topics, relTerm.getId(), checkExpired);
+                	final Topic foundTopic = getTopicById(topics, relTerm.getId(), false);
                 	if (foundTopic != null) {
                     	resultList.add((RelatedTerm)mapToTerm(foundTopic, relTerm, langFilter));                		
                 	}
@@ -232,7 +248,6 @@ public class SNSMapper {
      * @param fromTopicId id of starting topic ! PASS NULL IF ALL TOP TERMS WERE REQUESTED! 
      * @param whichDirection in which direction was the hierarchy operation performed
      * @param mapFragment sns result of hierarchy operation (getHierachy)
-     * @param checkExpired if true checks topics whether expired and REMOVES expired ones
      * @param langFilter Only deliver results of this language. We need additional filtering
      * 		cause SNS delivers results of different languages from first request. Pass NULL
      * 		if all languages ! 
@@ -241,7 +256,6 @@ public class SNSMapper {
     public List<TreeTerm> mapToTreeTerms(String fromTopicId,
     		HierarchyDirection whichDirection,
     		TopicMapFragment mapFragment,
-    		boolean checkExpired,
     		String langFilter) {
         final Topic[] topics = getTopics(mapFragment);
         final Association[] associations = getAssociations(mapFragment);
@@ -262,7 +276,7 @@ public class SNSMapper {
                 final Member[] members = assoc.getMember();
                 for (Member member : members) {
                 	final Topic foundTopic =
-                		getTopicById(topics, member.getTopicRef()[0].getHref(), checkExpired);
+                		getTopicById(topics, member.getTopicRef()[0].getHref(), false);
                 	
                 	// check additional filtering of language if requested !
                 	if (langFilter != null) {
@@ -483,15 +497,15 @@ public class SNSMapper {
     /** Return topic with given id from topic list.
      * @param topics list of topics
      * @param topicId id of topic to extract from list
-     * @param checkExpired if true checks whether topic is expired
+     * @param removeExpired if true checks whether topic is expired and returns null if so !
      * @return the found topic or NULL if topic not found or is expired (if requested)
      */
-    private Topic getTopicById(Topic[] topics, String topicId, boolean checkExpired) {
+    private Topic getTopicById(Topic[] topics, String topicId, boolean removeExpired) {
     	// determine topic from topic list
         for (Topic topic : topics) {
             if (topicId.equals(topic.getId())) {
             	// topic found, check expired if requested
-            	if (!checkExpired || !isExpired(topic)) {
+            	if (!removeExpired || !isExpired(topic)) {
                 	return topic;
             	}
             }
