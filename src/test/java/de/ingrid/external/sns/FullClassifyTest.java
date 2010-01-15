@@ -6,6 +6,7 @@ import java.util.Locale;
 
 import junit.framework.TestCase;
 import de.ingrid.external.FullClassifyService;
+import de.ingrid.external.FullClassifyService.FilterType;
 import de.ingrid.external.om.FullClassifyResult;
 import de.ingrid.external.om.IndexedDocument;
 
@@ -25,37 +26,43 @@ public class FullClassifyTest extends TestCase {
 	
 	public final void testAutoClassifyURL() throws MalformedURLException {
 		FullClassifyResult result;
-		IndexedDocument indexedDoc;
 
-		// www.wemove.com
-		URL url = new URL ("http://www.wemove.com");			
+		// www.portalu.de, FULL DATA
+		URL url = new URL ("http://www.portalu.de");			
 		int analyzeMaxWords = 500;
 		boolean ignoreCase = true;
 		Locale locale = Locale.GERMAN;
-
-		result = fullClassifyService.autoClassifyURL(url, analyzeMaxWords, ignoreCase, locale);
-
-		checkFullClassifyResult(result);
-
-		indexedDoc = result.getIndexedDocument();
-		checkIndexedDocument(indexedDoc, url);
-
-		// www.portalu.de
-		url = new URL ("http://www.portalu.de");			
-
-		result = fullClassifyService.autoClassifyURL(url, analyzeMaxWords, ignoreCase, locale);
-
-		checkFullClassifyResult(result);
-		assertTrue(result.getEvents().size() > 0);
-
-		indexedDoc = result.getIndexedDocument();
-		checkIndexedDocument(indexedDoc, url);
-	}
-	
-	private void checkFullClassifyResult(FullClassifyResult result) {
-		assertNotNull(result);
+		result = fullClassifyService.autoClassifyURL(url, analyzeMaxWords, ignoreCase, null, locale);
+		checkFullClassifyResult(result, url);
 		assertTrue(result.getTerms().size() > 0);
 		assertTrue(result.getLocations().size() > 0);
+		assertTrue(result.getEvents().size() > 0);
+
+		// ONLY TERMS
+		result = fullClassifyService.autoClassifyURL(url, analyzeMaxWords, ignoreCase, FilterType.ONLY_TERMS, locale);
+		checkFullClassifyResult(result, url);
+		assertTrue(result.getTerms().size() > 0);
+		assertTrue(result.getLocations().size() == 0);
+		assertTrue(result.getEvents().size() == 0);
+
+		// ONLY LOCATIONS
+		result = fullClassifyService.autoClassifyURL(url, analyzeMaxWords, ignoreCase, FilterType.ONLY_LOCATIONS, locale);
+		checkFullClassifyResult(result, url);
+		assertTrue(result.getTerms().size() == 0);
+		assertTrue(result.getLocations().size() > 0);
+		assertTrue(result.getEvents().size() == 0);
+
+		// ONLY EVENTS
+		result = fullClassifyService.autoClassifyURL(url, analyzeMaxWords, ignoreCase, FilterType.ONLY_EVENTS, locale);
+		checkFullClassifyResult(result, url);
+		assertTrue(result.getTerms().size() == 0);
+		assertTrue(result.getLocations().size() == 0);
+		assertTrue(result.getEvents().size() > 0);
+	}
+	
+	private void checkFullClassifyResult(FullClassifyResult result, URL expectedUrl) {
+		assertNotNull(result);
+		checkIndexedDocument(result.getIndexedDocument(), expectedUrl);
 	}
 
 	private void checkIndexedDocument(IndexedDocument indexedDoc, URL expectedUrl) {

@@ -37,6 +37,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 
 	private final static String SNS_FILTER_THESA = "/thesa";
 	private final static String SNS_FILTER_LOCATIONS = "/location";
+	private final static String SNS_FILTER_EVENTS = "/event";
 	private final static String SNS_PATH_ADMINISTRATIVE_LOCATIONS = "/location/admin";
 
     // Error string for the frontend
@@ -246,8 +247,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 
 	@Override
 	public FullClassifyResult autoClassifyURL(URL url, int analyzeMaxWords,
-			boolean ignoreCase, Locale language) {
-		String filter = null;
+			boolean ignoreCase, FilterType filter, Locale language) {
     	String langFilter = getSNSLanguageFilter(language);
 
 		TopicMapFragment mapFragment =
@@ -338,7 +338,8 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 
 	/** Call SNS autoClassify. Map passed params to according SNS params. */
     private TopicMapFragment snsAutoClassifyURL(URL url,
-    		int analyzeMaxWords, String filter, boolean ignoreCase, String langFilter) {
+    		int analyzeMaxWords, FilterType filterType, boolean ignoreCase, String langFilter) {
+    	String filter = getSNSFilterType(filterType);
     	TopicMapFragment mapFragment = null;
     	try {
     		mapFragment = snsClient.autoClassifyToUrl(url.toString(), analyzeMaxWords, filter, ignoreCase, langFilter);
@@ -415,6 +416,21 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     	}
 		
     	return searchType;
+	}
+
+	/** Determine filter type for SNS dependent from passed FilterType. */
+	private String getSNSFilterType(de.ingrid.external.FullClassifyService.FilterType filterType) {
+		// default is all !
+		String filter = null;
+    	if (filterType == de.ingrid.external.FullClassifyService.FilterType.ONLY_TERMS) {
+    		filter = SNS_FILTER_THESA;
+    	} else if (filterType == de.ingrid.external.FullClassifyService.FilterType.ONLY_LOCATIONS) {
+    		filter = SNS_FILTER_LOCATIONS;
+    	} else if (filterType == de.ingrid.external.FullClassifyService.FilterType.ONLY_EVENTS) {
+    		filter = SNS_FILTER_EVENTS;
+    	}
+		
+    	return filter;
 	}
 
 	/** Determine language filter for SNS dependent from passed language !
