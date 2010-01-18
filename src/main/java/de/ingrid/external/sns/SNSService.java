@@ -257,6 +257,18 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 		return result;
 	}
 
+	@Override
+	public FullClassifyResult autoClassifyText(String text, int analyzeMaxWords,
+			boolean ignoreCase, FilterType filter, Locale language) {
+    	String langFilter = getSNSLanguageFilter(language);
+
+		TopicMapFragment mapFragment =
+			snsAutoClassifyText(text, analyzeMaxWords, filter, ignoreCase, langFilter);
+		FullClassifyResult result = snsMapper.mapToFullClassifyResult(mapFragment, langFilter);
+
+		return result;
+	}
+
     // ----------------------- PRIVATE -----------------------------------
 
 	/** Call SNS findTopics. Map passed params to according SNS params. */
@@ -353,6 +365,20 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 
     	} catch (Exception e) {
 	    	log.error("Error calling snsClient.autoClassifyToUrl", e);
+    	}
+    	
+    	return mapFragment;
+    }
+
+	/** Call SNS autoClassify. Map passed params to according SNS params. */
+    private TopicMapFragment snsAutoClassifyText(String text,
+    		int analyzeMaxWords, FilterType filterType, boolean ignoreCase, String langFilter) {
+    	String filter = getSNSFilterType(filterType);
+    	TopicMapFragment mapFragment = null;
+    	try {
+    		mapFragment = snsClient.autoClassify(text, analyzeMaxWords, filter, ignoreCase, langFilter);
+    	} catch (Exception e) {
+	    	log.error("Error calling snsClient.autoClassify", e);
     	}
     	
     	return mapFragment;

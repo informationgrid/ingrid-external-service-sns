@@ -60,11 +60,57 @@ public class FullClassifyTest extends TestCase {
 		assertTrue(result.getEvents().size() > 0);
 	}
 	
+	public final void testAutoClassifyText() throws MalformedURLException {
+		FullClassifyResult result;
+
+		// www.portalu.de, FULL DATA
+        String text = "Tschernobyl liegt in Frankfurt im Wasser";
+		int analyzeMaxWords = 100;
+		boolean ignoreCase = true;
+		Locale locale = Locale.GERMAN;
+		result = fullClassifyService.autoClassifyText(text, analyzeMaxWords, ignoreCase, null, locale);
+		checkFullClassifyResult(result);
+		assertEquals(12, result.getTerms().size());
+		assertEquals(5, result.getLocations().size());
+		assertEquals(10, result.getEvents().size());
+
+		// ONLY TERMS
+		result = fullClassifyService.autoClassifyText(text, analyzeMaxWords, ignoreCase, FilterType.ONLY_TERMS, locale);
+		checkFullClassifyResult(result);
+		assertEquals(12, result.getTerms().size());
+		assertEquals(0, result.getLocations().size());
+		assertEquals(0, result.getEvents().size());
+
+		// ONLY LOCATIONS
+		result = fullClassifyService.autoClassifyText(text, analyzeMaxWords, ignoreCase, FilterType.ONLY_LOCATIONS, locale);
+		checkFullClassifyResult(result);
+		assertEquals(0, result.getTerms().size());
+		assertEquals(5, result.getLocations().size());
+		assertEquals(0, result.getEvents().size());
+
+		// ONLY EVENTS
+		result = fullClassifyService.autoClassifyText(text, analyzeMaxWords, ignoreCase, FilterType.ONLY_EVENTS, locale);
+		checkFullClassifyResult(result);
+		assertEquals(0, result.getTerms().size());
+		assertEquals(0, result.getLocations().size());
+		assertEquals(10, result.getEvents().size());
+	}
+	
+	private void checkFullClassifyResult(FullClassifyResult result) {
+		assertNotNull(result);
+		checkIndexedDocument(result.getIndexedDocument());
+	}
+	private void checkIndexedDocument(IndexedDocument indexedDoc) {
+		assertNotNull(indexedDoc);
+		assertNotNull(indexedDoc.getClassifyTimeStamp());
+		assertNotNull(indexedDoc.getLang());
+		assertNull(indexedDoc.getURL());
+	}
+
 	private void checkFullClassifyResult(FullClassifyResult result, URL expectedUrl) {
 		assertNotNull(result);
 		checkIndexedDocument(result.getIndexedDocument(), expectedUrl);
 	}
-
 	private void checkIndexedDocument(IndexedDocument indexedDoc, URL expectedUrl) {
 		assertNotNull(indexedDoc);
 		assertNotNull(indexedDoc.getClassifyTimeStamp());
