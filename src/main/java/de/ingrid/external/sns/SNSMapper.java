@@ -389,6 +389,9 @@ public class SNSMapper {
 
 		result.setId(topic.getId());
 		result.setTitle(topic.getBaseName(0).getBaseNameString().get_value());
+    	String typeId = topic.getInstanceOf(0).getTopicRef().getHref();
+    	typeId = typeId.substring(typeId.lastIndexOf("#")+1);
+    	result.setTypeId(typeId);
 
     	for (Occurrence occ: topic.getOccurrence()) {
     		if (occ.getInstanceOf().getTopicRef().getHref().endsWith("descriptionOcc")) {
