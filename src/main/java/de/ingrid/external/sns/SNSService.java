@@ -114,7 +114,8 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 			boolean ignoreCase, Locale language) {
     	String langFilter = getSNSLanguageFilter(language);
 
-    	Topic[] topics = snsAutoClassifyText(text, analyzeMaxWords, SNS_FILTER_LOCATIONS, ignoreCase, langFilter);
+    	Topic[] topics = getTopicsFromMapFragment(snsAutoClassifyText(text,
+    			analyzeMaxWords, FilterType.ONLY_LOCATIONS, ignoreCase, langFilter));
 
     	boolean checkExpired = true;
     	List<Location> resultList = snsMapper.mapToLocations(topics, checkExpired, langFilter);
@@ -237,7 +238,9 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 			boolean ignoreCase, Locale language) {
     	String langFilter = getSNSLanguageFilter(language);
 
-    	Topic[] topics = snsAutoClassifyText(text, analyzeMaxWords, SNS_FILTER_THESA, ignoreCase, langFilter);
+    	Topic[] topics = getTopicsFromMapFragment(snsAutoClassifyText(text,
+    			analyzeMaxWords, FilterType.ONLY_TERMS, ignoreCase, langFilter));
+
     	List<Term> resultList = snsMapper.mapToTerms(topics, TermType.DESCRIPTOR, langFilter);
 
 	    return resultList.toArray(new Term[resultList.size()]);
@@ -332,21 +335,18 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 	}
 	
 	/** Call SNS autoClassify. Map passed params to according SNS params. */
-	private Topic[] snsAutoClassifyText(String text,
-			int analyzeMaxWords, String filter, boolean ignoreCase, String langFilter) {
-		Topic[] topics = null;
+    private TopicMapFragment snsAutoClassifyText(String text,
+    		int analyzeMaxWords, FilterType filterType, boolean ignoreCase, String langFilter) {
+    	String filter = getSNSFilterType(filterType);
     	TopicMapFragment mapFragment = null;
     	try {
     		mapFragment = snsClient.autoClassify(text, analyzeMaxWords, filter, ignoreCase, langFilter);
     	} catch (Exception e) {
 	    	log.error("Error calling snsClient.autoClassify", e);
-	    }
-	    
-	    if (null != mapFragment) {
-	    	topics = mapFragment.getTopicMap().getTopic();
-	    }
-	    return topics;
-	}
+    	}
+    	
+    	return mapFragment;
+    }
 
 	/** Call SNS autoClassify. Map passed params to according SNS params. */
     private TopicMapFragment snsAutoClassifyURL(URL url,
@@ -365,20 +365,6 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 
     	} catch (Exception e) {
 	    	log.error("Error calling snsClient.autoClassifyToUrl", e);
-    	}
-    	
-    	return mapFragment;
-    }
-
-	/** Call SNS autoClassify. Map passed params to according SNS params. */
-    private TopicMapFragment snsAutoClassifyText(String text,
-    		int analyzeMaxWords, FilterType filterType, boolean ignoreCase, String langFilter) {
-    	String filter = getSNSFilterType(filterType);
-    	TopicMapFragment mapFragment = null;
-    	try {
-    		mapFragment = snsClient.autoClassify(text, analyzeMaxWords, filter, ignoreCase, langFilter);
-    	} catch (Exception e) {
-	    	log.error("Error calling snsClient.autoClassify", e);
     	}
     	
     	return mapFragment;
@@ -471,5 +457,16 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     	}
 		
     	return langFilter;
+	}
+
+	private Topic[] getTopicsFromMapFragment(TopicMapFragment mapFragment) {
+		Topic[] topics = new Topic[0];	    
+	    if (null != mapFragment) {
+	    	topics = mapFragment.getTopicMap().getTopic();
+	    } else {
+	    	log.warn("TopicMapFragment is Null !!!?");
+	    }
+
+	    return topics;
 	}
 }
