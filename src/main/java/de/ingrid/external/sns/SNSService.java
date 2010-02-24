@@ -51,8 +51,6 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     public void init() throws Exception {
     	ResourceBundle resourceBundle = ResourceBundle.getBundle("sns");
 
-    	int SNS_TIMEOUT = new Integer(resourceBundle.getString("sns.timeout"));
-
     	if (log.isInfoEnabled()) {
     		log.info("initializing SNSService, creating SNSClient ! username=" + resourceBundle.getString("sns.username")
     				+ " " + resourceBundle.getString("sns.serviceURL"));
@@ -63,7 +61,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     			resourceBundle.getString("sns.password"),
     			resourceBundle.getString("sns.language"),
         		new URL(resourceBundle.getString("sns.serviceURL")));
-    	snsClient.setTimeout(SNS_TIMEOUT);
+    	snsClient.setTimeout(new Integer(resourceBundle.getString("sns.timeout")));
     	snsMapper = SNSMapper.getInstance(resourceBundle);
     }
 
