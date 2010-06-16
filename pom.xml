@@ -37,4 +37,12 @@
       <artifactId>junit</artifactId>
     </dependency>
   </dependencies>
+  <!-- NEVER DELETE: InGrid repo needed for download of base pom if not present ! -->
+  <repositories>
+		<repository>
+			<id>de.ingrid.m2</id>
+			<name>Maven2 Repo InGrid</name>
+			<url>http://harrison.its-technidata.de/ingrid/maven2</url>
+		</repository>
+	</repositories>
 </project>
