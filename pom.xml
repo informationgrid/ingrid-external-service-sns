@@ -42,7 +42,7 @@
 		<repository>
 			<id>de.ingrid.m2</id>
 			<name>Maven2 Repo InGrid</name>
-			<url>http://harrison.its-technidata.de/ingrid/maven2</url>
+			<url>http://harrison.its-technidata.de/archiva/repository/ingrid-all</url>
 		</repository>
 	</repositories>
 </project>
