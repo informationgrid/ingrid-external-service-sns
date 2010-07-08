@@ -40,8 +40,8 @@
   <!-- NEVER DELETE: InGrid repo needed for download of base pom if not present ! -->
   <repositories>
 		<repository>
-			<id>de.ingrid.m2</id>
-			<name>Maven2 Repo InGrid</name>
+			<id>de.ingrid.all</id>
+			<name>Maven Repo InGrid</name>
 			<url>http://harrison.its-technidata.de/archiva/repository/ingrid-all</url>
 		</repository>
 	</repositories>
