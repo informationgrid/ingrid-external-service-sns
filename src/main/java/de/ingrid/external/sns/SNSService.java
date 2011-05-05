@@ -472,7 +472,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     		mapFragment = snsClient.autoClassifyToUrl(url.toString(), analyzeMaxWords, filter, ignoreCase, langFilter);
 
     	} catch (AxisFault f) {
-    		log.debug("Error while calling autoClassifyToUrl.", f);
+    		log.info("Error while calling autoClassifyToUrl.", f);
     		if (f.getFaultString().contains("Timeout"))
     			throw new RuntimeException(ERROR_SNS_TIMEOUT);
     		else
