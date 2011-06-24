@@ -37,7 +37,7 @@ public class ThesaurusTest extends TestCase {
 		terms = thesaurusService.findTermsFromQueryTerm(queryTerm, matchingType,
 				addDescriptors, locale);
 		assertNotNull(terms);
-		assertEquals(20, terms.length);
+		assertEquals(340, terms.length);
 		for (Term term : terms) {
 			checkTerm(term, null, null, null);
 		}

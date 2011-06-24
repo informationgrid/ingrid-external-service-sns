@@ -98,6 +98,7 @@ public class SNSClient {
      *            Can be one of the provided <code>FieldsType</code>s.
      * @param offset
      *            Defines the number of topics to skip.
+     * @param pageSize TODO
      * @param lang
      *            Is used to specify the preferred language for requests.
      * @param includeUse
@@ -107,7 +108,7 @@ public class SNSClient {
      * @see FieldsType
      */
     public synchronized TopicMapFragment findTopics(String queryTerm, String path, SearchType searchType,
-            FieldsType fieldsType, long offset, String lang, boolean includeUse) throws Exception {
+            FieldsType fieldsType, long offset, long pageSize, String lang, boolean includeUse) throws Exception {
         if (queryTerm == null) {
             throw new IllegalArgumentException("QueryTerm can not be null");
         }
@@ -122,6 +123,7 @@ public class SNSClient {
         topicRequest.setSearchType(searchType);
         topicRequest.setFields(fieldsType);
         topicRequest.setOffset(BigInteger.valueOf(offset));
+        topicRequest.setPageSize(BigInteger.valueOf(pageSize));
         topicRequest.setQueryTerm(queryTerm);
         if (includeUse) {
             topicRequest.setIncludeUse("true");

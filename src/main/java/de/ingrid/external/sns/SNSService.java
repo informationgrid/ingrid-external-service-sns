@@ -397,7 +397,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     	TopicMapFragment mapFragment = null;
     	try {
     		mapFragment = snsClient.findTopics(queryTerms, path, searchType,
-    	            FieldsType.captors, 0, langFilter, addDescriptors);
+    	            FieldsType.captors, 0, 500, langFilter, addDescriptors);
     	} catch (Exception e) {
 	    	log.error("Error calling snsClient.findTopics", e);
 	    }
