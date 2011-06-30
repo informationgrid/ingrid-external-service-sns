@@ -9,11 +9,11 @@
   <groupId>de.ingrid</groupId>
   <artifactId>ingrid-external-service-sns</artifactId>
   <packaging>jar</packaging>
-  <version>3.0.1</version>
+  <version>3.1.0-SNAPSHOT</version>
   <name>ingrid-external-service-sns</name>
   <scm>
-    <connection>scm:svn:https://harrison.its-technidata.de:444/svn/ingrid/ingrid-external-service-sns/tags/ingrid-external-service-sns-3.0.1</connection>
-    <developerConnection>scm:svn:https://harrison.its-technidata.de:444/svn/ingrid/ingrid-external-service-sns/tags/ingrid-external-service-sns-3.0.1</developerConnection>
+    <connection>scm:svn:https://harrison.its-technidata.de:444/svn/ingrid/ingrid-external-service-sns/trunk</connection>
+    <developerConnection>scm:svn:https://harrison.its-technidata.de:444/svn/ingrid/ingrid-external-service-sns/trunk</developerConnection>
   </scm>
   <dependencies>
     <dependency>
