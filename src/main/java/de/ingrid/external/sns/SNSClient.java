@@ -9,6 +9,8 @@ import java.math.BigInteger;
 import java.net.URL;
 import java.rmi.RemoteException;
 
+import org.apache.log4j.Logger;
+
 import com.slb.taxi.webservice.xtm.stubs.Anniversary;
 import com.slb.taxi.webservice.xtm.stubs.AutoClassify;
 import com.slb.taxi.webservice.xtm.stubs.FieldsType;
@@ -33,6 +35,8 @@ import com.slb.taxi.webservice.xtm.stubs.XTMserviceLocator;
  * @author hs
  */
 public class SNSClient {
+
+	private final static Logger log = Logger.getLogger(SNSClient.class);	
 
     private String fUserName;
 
@@ -304,6 +308,13 @@ public class SNSClient {
     public synchronized TopicMapFragment findEvents(String query, boolean ignoreCase, SearchType searchType,
             String[] pathArray, FieldsType fieldsType, long offset, String at, String lang, int length)
             throws RemoteException {
+        if (log.isDebugEnabled()) {
+            log.debug("findEvents: term=" + query + ", ignoreCase=" + ignoreCase +
+            		", atDate=" + at +
+            		", searchType=" + searchType + ", eventPath= " + pathArray +
+            		", lang=" + lang);
+        }
+
         FindEvents findEvents = new FindEvents();
         findEvents.setUser(this.fUserName);
         findEvents.setPassword(this.fPassword);
@@ -317,10 +328,17 @@ public class SNSClient {
         findEvents.setSearchType(searchType);
         findEvents.setLang(lang);
         findEvents.setPath(pathArray);
-        findEvents.setFields(fieldsType);
+        // no fields type when looking for events !
+        // from manual: "Falls mit path=/event gesucht wird, wird ohne Übergabe von fields auch
+        // die Ereignisbeschreibung (description) durchsucht."
+        //findEvents.setFields(fieldsType);
         findEvents.setOffset(BigInteger.valueOf(offset));
         findEvents.setPageSize(BigInteger.valueOf(length));
-        findEvents.setAt(at);
+        // from manual: "Wird gar keine Zeitangabe übergeben, werden die anderen Suchbedingungen ohne 
+        // zeitliche Einschränkung ausgewertet."
+        if (at != null) {
+            findEvents.setAt(at);        	
+        }
 
         return this.fXtmSoapPortType.findEventsOp(findEvents);
     }
@@ -357,6 +375,13 @@ public class SNSClient {
     public synchronized TopicMapFragment findEvents(String query, boolean ignoreCase, SearchType searchType,
             String[] pathArray, FieldsType fieldsType, long offset, String from, String to, String lang, int length)
             throws RemoteException {
+        if (log.isDebugEnabled()) {
+            log.debug("findEvents: term=" + query + ", ignoreCase=" + ignoreCase +
+            		", fromDate=" + from + ", toDate=" + to +
+            		", searchType=" + searchType + ", eventPath= " + pathArray +
+            		", lang=" + lang);
+        }
+
         FindEvents findEvents = new FindEvents();
         findEvents.setUser(this.fUserName);
         findEvents.setPassword(this.fPassword);
@@ -369,11 +394,20 @@ public class SNSClient {
         findEvents.setSearchType(searchType);
         findEvents.setLang(lang);
         findEvents.setPath(pathArray);
-        findEvents.setFields(fieldsType);
+        // no fields type when looking for events !
+        // from manual: "Falls mit path=/event gesucht wird, wird ohne Übergabe von fields auch
+        // die Ereignisbeschreibung (description) durchsucht."
+        // findEvents.setFields(fieldsType);
         findEvents.setOffset(BigInteger.valueOf(offset));
         findEvents.setPageSize(BigInteger.valueOf(length));
-        findEvents.setFrom(from);
-        findEvents.setTo(to);
+        // from manual: "Wird gar keine Zeitangabe übergeben, werden die anderen Suchbedingungen ohne 
+        // zeitliche Einschränkung ausgewertet."
+        if (from != null) {
+            findEvents.setFrom(from);        	
+        }
+        if (to != null) {
+            findEvents.setTo(to);        	
+        }
 
         return this.fXtmSoapPortType.findEventsOp(findEvents);
     }
