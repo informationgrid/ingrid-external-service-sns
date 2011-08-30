@@ -22,8 +22,8 @@ import de.ingrid.external.om.FullClassifyResult;
 import de.ingrid.external.om.Location;
 import de.ingrid.external.om.RelatedTerm;
 import de.ingrid.external.om.Term;
-import de.ingrid.external.om.TreeTerm;
 import de.ingrid.external.om.Term.TermType;
+import de.ingrid.external.om.TreeTerm;
 import de.ingrid.external.om.impl.LocationImpl;
 import de.ingrid.external.om.impl.TermImpl;
 import de.ingrid.external.sns.SNSMapper.HierarchyDirection;
@@ -443,7 +443,8 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     	try {
     		mapFragment = snsClient.getPSI(topicId, 0, filter);
     	} catch (Exception e) {
-	    	log.error("Error calling snsClient.getPSI", e);
+        	log.error("Error calling snsClient.getPSI (topicId=" + topicId
+            		+ ", filter=" + filter + "), we return null Details", e);
 	    }
 	    
 	    return mapFragment;
