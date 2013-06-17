@@ -5,15 +5,19 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.MissingResourceException;
 import java.util.ResourceBundle;
 
 import org.apache.log4j.Logger;
 
+import com.hp.hpl.jena.rdf.model.NodeIterator;
+import com.hp.hpl.jena.rdf.model.RDFNode;
+import com.hp.hpl.jena.rdf.model.ResIterator;
+import com.hp.hpl.jena.rdf.model.Resource;
+import com.hp.hpl.jena.rdf.model.Statement;
+import com.hp.hpl.jena.rdf.model.StmtIterator;
 import com.slb.taxi.webservice.xtm.stubs.TopicMapFragment;
 import com.slb.taxi.webservice.xtm.stubs.TopicMapFragmentIndexedDocument;
 import com.slb.taxi.webservice.xtm.stubs.xtm.Association;
@@ -29,10 +33,10 @@ import de.ingrid.external.om.FullClassifyResult;
 import de.ingrid.external.om.IndexedDocument;
 import de.ingrid.external.om.Location;
 import de.ingrid.external.om.RelatedTerm;
-import de.ingrid.external.om.Term;
-import de.ingrid.external.om.TreeTerm;
 import de.ingrid.external.om.RelatedTerm.RelationType;
+import de.ingrid.external.om.Term;
 import de.ingrid.external.om.Term.TermType;
+import de.ingrid.external.om.TreeTerm;
 import de.ingrid.external.om.impl.EventImpl;
 import de.ingrid.external.om.impl.FullClassifyResultImpl;
 import de.ingrid.external.om.impl.IndexedDocumentImpl;
@@ -74,6 +78,45 @@ public class SNSMapper {
 		this.resourceBundle = resourceBundle;
     	SNS_NATIVE_KEY_PREFIX = resourceBundle.getString("sns.nativeKeyPrefix");
 	}
+	
+	
+	
+	public TreeTerm mapTreeTerm(Resource resource, String lang) {
+        TreeTerm treeTerm = new TreeTermImpl();
+        treeTerm.setId(resource.toString());
+        treeTerm.setName(RDFUtils.getName(resource, lang));
+        treeTerm.setType(Term.TermType.DESCRIPTOR);
+        addParentInfo(treeTerm, resource);
+        
+        // check for children (simple check)
+        // needed to presentation ("plus"-sign in front of node)
+        NodeIterator it = RDFUtils.getChildren(resource.getModel());
+        while (it.hasNext()) {
+            RDFNode node = it.next();
+            TreeTerm child = new TreeTermImpl();
+            child.setId(node.toString());
+            treeTerm.addChild(child);
+        }
+        
+        return treeTerm;
+    }
+	
+	private void addParentInfo(TreeTerm treeTerm, Resource resource) {
+        //RDFNode parentNode = RDFUtils.getParent(resource.getModel());
+        //if (parentNode != null) {
+            TreeTerm parentTreeTerm = new TreeTermImpl();
+        //    parentTreeTerm.setId(parentNode.toString());
+            treeTerm.addParent(parentTreeTerm);
+        //}
+        
+    }
+	
+	
+	/*
+	 * ==========================================================
+	 */
+
+	
 
     /** Creates a Location list from the given topics.<br/>
      * @param topics sns topics representing locations
@@ -173,18 +216,21 @@ public class SNSMapper {
      * @param langFilter pass requested SNS language for mapping of title ... 
      * @return the terms NEVER NULL
      */
-    public List<Term> mapToTerms(Topic[] topics, TermType filter, String langFilter) {
+    public List<Term> mapToTerms(Resource searchResults, TermType filter, String langFilter) {
     	List<Term> resultList = new ArrayList<Term>();
 
-    	if ((null != topics)) {
-            for (Topic topic : topics) {
+    	if ((null != searchResults)) {
+    		NodeIterator it = RDFUtils.getResults(searchResults);
+    		
+    		while (it.hasNext()) {
+    			RDFNode node = it.next();
             	if (filter != null) {
-            		if (!getTermType(topic).equals(filter)) {
+            		if (!getTermType(node.asResource()).equals(filter)) {
             			continue;
             		}
             	}
-    			resultList.add(mapToTerm(topic, new TermImpl(), langFilter));
-			}
+    			resultList.add(mapToTerm(node.asResource(), new TermImpl(), langFilter));
+    		}
         }
     	
     	return resultList;
@@ -196,12 +242,12 @@ public class SNSMapper {
      * @param langFilter pass requested SNS language for mapping of title ... 
      * @return again the outTerm after mapping, NEVER NULL
      */
-    public Term mapToTerm(Topic inTopic, Term outTerm, String langFilter) {
-		outTerm.setId(inTopic.getId());
-		outTerm.setName(getTopicTitle(inTopic, langFilter));
-		outTerm.setType(getTermType(inTopic));
+    public Term mapToTerm(Resource res, Term outTerm, String langFilter) {
+		outTerm.setId(res.toString());
+		outTerm.setName(RDFUtils.getName(res, langFilter));
+		outTerm.setType(getTermType(res));
 
-		outTerm.setInspireThemes(getInspireThemes(inTopic));
+		/*outTerm.setInspireThemes(getInspireThemes(inTopic));
 
     	if (isGemet(inTopic)) {
     		// if GEMET, then the title is used for the title in SNSTopic and, in case UMTHES is different
@@ -209,9 +255,24 @@ public class SNSMapper {
     		outTerm.setAlternateName(outTerm.getName());
     		outTerm.setName(getGemetName(inTopic));
     		outTerm.setAlternateId(getGemetId(inTopic));
-    	}
+    	}*/
 
     	return outTerm;
+    }
+    
+    public List<Term> mapSimilarToTerms(Resource searchResults, String langFilter) {
+    	List<Term> resultList = new ArrayList<Term>();
+
+    	if ((null != searchResults)) {
+    		List<String> labels = RDFUtils.getAltLabels(searchResults, langFilter);
+    		
+    		for (String label : labels) {
+				Term t = new TermImpl("???", label, Term.TermType.DESCRIPTOR);
+    			resultList.add(t);
+    		}
+        }
+    	
+    	return resultList;
     }
 
     /** Creates a RelatedTerm list from the given TopicMapFragment (result of relation operation).<br/>
@@ -221,11 +282,11 @@ public class SNSMapper {
      * @return the related terms NEVER NULL
      */
     public List<RelatedTerm> mapToRelatedTerms(String fromTopicId,
-    		TopicMapFragment mapFragment,
+    		Resource res,
     		String langFilter) {
     	List<RelatedTerm> resultList = new ArrayList<RelatedTerm>();
 
-        final Topic[] topics = getTopics(mapFragment);
+        /*final Topic[] topics = getTopics(mapFragment);
         final Association[] associations = getAssociations(mapFragment);
 
         // iterate through associations to find the correct associations !
@@ -240,8 +301,40 @@ public class SNSMapper {
                 }
             }
         }
-
+		*/
     	return resultList;
+    }
+    
+    public List<TreeTerm> mapRootToTreeTerms(String fromTopicId,
+    		HierarchyDirection whichDirection,
+    		Resource termResource,
+    		String langFilter) {
+    	
+    	List<TreeTerm> resultList = new ArrayList<TreeTerm>();
+		//for (ModelWrapper parent : parents) {
+    	ResIterator children = RDFUtils.getTopConceptsOf(termResource.getModel());
+			while (children.hasNext()) {
+				TreeTerm treeTerm = new TreeTermImpl();
+				RDFNode child = (RDFNode) children.next();
+				String identifier = child.toString();
+				treeTerm.setId(identifier);
+				treeTerm.setName(RDFUtils.getName(child.asResource(), langFilter));
+				treeTerm.setType(Term.TermType.DESCRIPTOR);
+				
+				resultList.add(treeTerm);
+				
+				// check for children (simple check)
+				// needed to presentation ("plus"-sign in front of node)
+				StmtIterator it = RDFUtils.getChildren(child.asResource());
+				while (it.hasNext()) {
+					Statement node = it.next();
+					TreeTerm subChild = new TreeTermImpl();
+					subChild.setId(node.toString());
+					treeTerm.addChild(subChild);
+				}
+			}
+		//}
+		return resultList;
     }
 
     /** Creates a hierarchy list of tree terms dependent from hierarchy operation.<br/>
@@ -255,9 +348,62 @@ public class SNSMapper {
      */
     public List<TreeTerm> mapToTreeTerms(String fromTopicId,
     		HierarchyDirection whichDirection,
-    		TopicMapFragment mapFragment,
+    		Resource termResource,
     		String langFilter) {
-        final Topic[] topics = getTopics(mapFragment);
+    	
+    	List<TreeTerm> resultList = new ArrayList<TreeTerm>();
+		//for (ModelWrapper parent : parents) {
+    	if (whichDirection == HierarchyDirection.DOWN) {
+			StmtIterator children = RDFUtils.getChildren(termResource);
+			while (children.hasNext()) {
+				TreeTerm treeTerm = new TreeTermImpl();
+				Statement child = children.next();
+				treeTerm.setId(child.getObject().toString());
+				//Resource childResource = termResource.getModel().getResource(identifier);
+				treeTerm.setName(RDFUtils.getName(child.getResource(), langFilter));
+				treeTerm.setType(Term.TermType.DESCRIPTOR);
+				
+				// needed to determine that it's not a top-term!
+				TreeTerm term = new TreeTermImpl();
+				term.setId(termResource.toString());
+				treeTerm.addParent(term);
+				
+				resultList.add(treeTerm);
+				
+				// check for children (simple check)
+				// needed to presentation ("plus"-sign in front of node)
+				StmtIterator it = RDFUtils.getChildren(child.getResource());
+				while (it.hasNext()) {
+					Statement node = it.next();
+					TreeTerm subChild = new TreeTermImpl();
+					subChild.setId(node.toString());
+					treeTerm.addChild(subChild);
+				}
+			}
+    	} else {
+    		// set start term
+    		TreeTerm term = new TreeTermImpl();
+			term.setId(termResource.toString());
+			term.setName(RDFUtils.getName(termResource, langFilter));
+			term.setType(Term.TermType.DESCRIPTOR);
+			resultList.add(term);
+			RDFNode parent = RDFUtils.getParent(termResource.getModel());
+			while (parent != null) {
+				TreeTerm parentTerm = new TreeTermImpl();
+				parentTerm.setId(parent.toString());
+				parentTerm.setName(RDFUtils.getName(parent.asResource(), langFilter));
+				parentTerm.setType(Term.TermType.DESCRIPTOR);
+				parentTerm.addChild(term);
+				term.addParent(parentTerm);
+				
+				parent = RDFUtils.getParent(termResource.getModel().getResource(parentTerm.getId()));
+				term = parentTerm;
+			}
+    		
+    	}
+		return resultList;
+    	
+        /*final Topic[] topics = getTopics(mapFragment);
         final Association[] associations = getAssociations(mapFragment);
 
         // iterate through associations and set up all according TreeTerms !
@@ -361,7 +507,7 @@ public class SNSMapper {
         	}
         }
         
-    	return resultList;
+    	return resultList;*/
     }
 
     /** Creates an Event list from the given topics.<br/>
@@ -447,7 +593,7 @@ public class SNSMapper {
     	}
     	
     	result.setLocations(mapToLocations(locTopics.toArray(new Topic[locTopics.size()]), true, langFilter));
-    	result.setTerms(mapToTerms(thesaTopics.toArray(new Topic[thesaTopics.size()]), null, langFilter));
+    	//result.setTerms(mapToTerms(thesaTopics.toArray(new Topic[thesaTopics.size()]), null, langFilter));
     	result.setEvents(mapToEvents(eventTopics.toArray(new Topic[eventTopics.size()])));
 
     	return result;
@@ -580,8 +726,8 @@ public class SNSMapper {
     	return result;
     }
 
-    private TermType getTermType(Topic t) {
-    	String nodeType = t.getInstanceOf(0).getTopicRef().getHref();
+    private TermType getTermType(Resource r) {
+    	String nodeType = "descriptorType";
 
 		if (nodeType.indexOf("topTermType") != -1) 
 			return TermType.NODE_LABEL;

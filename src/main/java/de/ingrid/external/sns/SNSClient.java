@@ -5,26 +5,18 @@
  */
 package de.ingrid.external.sns;
 
-import java.math.BigInteger;
 import java.net.URL;
 import java.rmi.RemoteException;
 
 import org.apache.log4j.Logger;
 
-import com.slb.taxi.webservice.xtm.stubs.Anniversary;
-import com.slb.taxi.webservice.xtm.stubs.AutoClassify;
+import com.hp.hpl.jena.rdf.model.Model;
+import com.hp.hpl.jena.rdf.model.ModelFactory;
+import com.hp.hpl.jena.rdf.model.Resource;
+import com.hp.hpl.jena.shared.DoesNotExistException;
 import com.slb.taxi.webservice.xtm.stubs.FieldsType;
-import com.slb.taxi.webservice.xtm.stubs.FindEvents;
-import com.slb.taxi.webservice.xtm.stubs.FindTopics;
-import com.slb.taxi.webservice.xtm.stubs.GetHierarchy;
-import com.slb.taxi.webservice.xtm.stubs.GetPSI;
-import com.slb.taxi.webservice.xtm.stubs.GetSimilarTerms;
-import com.slb.taxi.webservice.xtm.stubs.GetTypes;
-import com.slb.taxi.webservice.xtm.stubs.HttpSoapBindingStub;
 import com.slb.taxi.webservice.xtm.stubs.SearchType;
 import com.slb.taxi.webservice.xtm.stubs.TopicMapFragment;
-import com.slb.taxi.webservice.xtm.stubs.XTMESoapPortType;
-import com.slb.taxi.webservice.xtm.stubs.XTMserviceLocator;
 
 /**
  * Adapter which provides the access to the sns webservice.
@@ -44,9 +36,8 @@ public class SNSClient {
 
     private String fLanguage;
 
-    private XTMESoapPortType fXtmSoapPortType;
+	private URL fUrl;
 
-    private HttpSoapBindingStub fSoapBinding;
 
     /**
      * Constructs an instance by using the given parameters.
@@ -79,13 +70,7 @@ public class SNSClient {
         this.fUserName = userName;
         this.fPassword = password;
         this.fLanguage = language;
-        if (url == null) {
-            this.fXtmSoapPortType = new XTMserviceLocator().getXTMSoapPort();
-            this.fSoapBinding = (HttpSoapBindingStub) this.fXtmSoapPortType;
-        } else {
-            this.fXtmSoapPortType = new XTMserviceLocator().getXTMSoapPort(url);
-            this.fSoapBinding = (HttpSoapBindingStub) this.fXtmSoapPortType;
-        }
+        this.fUrl = url;
     }
 
     /**
@@ -111,9 +96,36 @@ public class SNSClient {
      * @see SearchType
      * @see FieldsType
      */
-    public synchronized TopicMapFragment findTopics(String queryTerm, String path, SearchType searchType,
+    public synchronized Resource findTopics(String queryTerm, String path, String searchType,
             FieldsType fieldsType, long offset, long pageSize, String lang, boolean includeUse) throws Exception {
-        if (queryTerm == null) {
+    	
+    	//try.iqvoc.net/search?t=labeling skos base&qt=exact&q=dance&for=concept&c=indoors&l=en
+    	
+    	// create an empty model
+        Model model = ModelFactory.createDefaultModel();
+
+        String query = this.fUrl.toString() + "search.rdf?t=labeling-skos-base&qt="+searchType+"&q=" + queryTerm + "&l=" + lang;
+        //String query = "http://boden-params.herokuapp.com/en/search.rdf?utf8=%E2%9C%93&t=labeling-skos-base&qt=begins_with&q=wasser&for=all&c=&l%5B%5D=de&l%5B%5D=en";
+
+        try {
+        	// read the RDF/XML file
+        	model.read(query);
+        } catch (DoesNotExistException e) {
+        	log.error("The search-function does not exist: " + query);
+        	return null;
+        } catch (Exception e) {
+        	log.error("The URI seems to have a problem: " + query);
+        	return null;
+        }
+
+        // write it to standard out
+        if (log.isDebugEnabled()) {
+            model.write(System.out);
+        }
+        
+        return model.getResource(query);
+    	
+        /*if (queryTerm == null) {
             throw new IllegalArgumentException("QueryTerm can not be null");
         }
         if (offset < 0) {
@@ -135,7 +147,7 @@ public class SNSClient {
             topicRequest.setIncludeUse("false");
         }
 
-        return this.fXtmSoapPortType.findTopicsOp(topicRequest);
+        return this.fXtmSoapPortType.findTopicsOp(topicRequest);*/
     }
 
     /**
@@ -152,7 +164,7 @@ public class SNSClient {
      * @throws Exception
      */
     public synchronized TopicMapFragment getPSI(String topicID, int distance, String filter) throws Exception {
-        if (topicID == null) {
+        /*if (topicID == null) {
             throw new IllegalArgumentException("TopicID can not be null");
         }
         if (distance < 0 || distance > 3) {
@@ -169,7 +181,39 @@ public class SNSClient {
             psiRequest.setFilter(filter);
         }
 
-        return this.fXtmSoapPortType.getPSIOp(psiRequest);
+        return this.fXtmSoapPortType.getPSIOp(psiRequest);*/
+    	return null;
+    }
+    
+    public synchronized Resource getTerm(String termId, String lang) {
+        return getTermByUri(this.fUrl.toString(), termId, lang);
+    }
+    
+    public synchronized Resource getTermByUri(String uri, String termId, String lang) {
+    
+    	// create an empty model
+        Model model = ModelFactory.createDefaultModel();
+
+        int pos = termId.lastIndexOf('/')+1;
+        String query = uri + lang + "/concepts/" + termId.substring(pos) + ".rdf";
+
+        try {
+        	// read the RDF/XML file
+        	model.read(query);
+        } catch (DoesNotExistException e) {
+        	log.error("The term does not exist: " + query);
+        	return null;
+        } catch (Exception e) {
+        	log.error("The URI seems to have a problem: " + query);
+        	return null;
+        }
+
+        // write it to standard out
+        if (log.isDebugEnabled()) {
+            model.write(System.out);
+        }
+        
+        return model.getResource(termId);
     }
 
     /**
@@ -191,7 +235,7 @@ public class SNSClient {
      */
     public synchronized TopicMapFragment autoClassify(String document, int analyzeMaxWords, String filter,
             boolean ignoreCase, String lang) throws Exception {
-        if (document == null) {
+        /*if (document == null) {
             throw new IllegalArgumentException("document can not be null");
         }
         if (analyzeMaxWords < 0) {
@@ -215,7 +259,8 @@ public class SNSClient {
             classifyRequest.setFilter(filter);
         }
 
-        return this.fXtmSoapPortType.autoClassifyOp(classifyRequest);
+        return this.fXtmSoapPortType.autoClassifyOp(classifyRequest);*/
+        return null;
     }
 
     /**
@@ -237,7 +282,7 @@ public class SNSClient {
      */
     public synchronized TopicMapFragment autoClassifyToUrl(String url, int analyzeMaxWords, String filter,
             boolean ignoreCase, String lang) throws Exception {
-        if (url == null) {
+        /*if (url == null) {
             throw new IllegalArgumentException("Url can not be null");
         }
         if (analyzeMaxWords < 0) {
@@ -261,7 +306,8 @@ public class SNSClient {
             classifyRequest.setFilter(filter);
         }
 
-        return this.fXtmSoapPortType.autoClassifyOp(classifyRequest);
+        return this.fXtmSoapPortType.autoClassifyOp(classifyRequest);*/
+    	return null;
     }
 
     /**
@@ -271,11 +317,12 @@ public class SNSClient {
      * @throws RemoteException
      */
     public synchronized TopicMapFragment getTypes() throws RemoteException {
-        GetTypes typeRequest = new GetTypes();
+        /*GetTypes typeRequest = new GetTypes();
         typeRequest.setUser(this.fUserName);
         typeRequest.setPassword(this.fPassword);
 
-        return this.fXtmSoapPortType.getTypesOp(typeRequest);
+        return this.fXtmSoapPortType.getTypesOp(typeRequest);*/
+    	return null;
     }
 
     /**
@@ -308,7 +355,7 @@ public class SNSClient {
     public synchronized TopicMapFragment findEvents(String query, boolean ignoreCase, SearchType searchType,
             String[] pathArray, FieldsType fieldsType, long offset, String at, String lang, int length)
             throws RemoteException {
-        if (log.isDebugEnabled()) {
+        /*if (log.isDebugEnabled()) {
             log.debug("findEvents: term=" + query + ", ignoreCase=" + ignoreCase +
             		", atDate=" + at +
             		", searchType=" + searchType + ", eventPath= " + pathArray +
@@ -340,7 +387,8 @@ public class SNSClient {
             findEvents.setAt(at);        	
         }
 
-        return this.fXtmSoapPortType.findEventsOp(findEvents);
+        return this.fXtmSoapPortType.findEventsOp(findEvents);*/
+    	return null;
     }
 
     /**
@@ -375,7 +423,7 @@ public class SNSClient {
     public synchronized TopicMapFragment findEvents(String query, boolean ignoreCase, SearchType searchType,
             String[] pathArray, FieldsType fieldsType, long offset, String from, String to, String lang, int length)
             throws RemoteException {
-        if (log.isDebugEnabled()) {
+        /*if (log.isDebugEnabled()) {
             log.debug("findEvents: term=" + query + ", ignoreCase=" + ignoreCase +
             		", fromDate=" + from + ", toDate=" + to +
             		", searchType=" + searchType + ", eventPath= " + pathArray +
@@ -409,7 +457,8 @@ public class SNSClient {
             findEvents.setTo(to);        	
         }
 
-        return this.fXtmSoapPortType.findEventsOp(findEvents);
+        return this.fXtmSoapPortType.findEventsOp(findEvents);*/
+    	return null;
     }
 
     /**
@@ -421,7 +470,7 @@ public class SNSClient {
      * @throws RemoteException
      */
     public synchronized TopicMapFragment anniversary(String date) throws RemoteException {
-        if (null == date) {
+        /*if (null == date) {
             throw new IllegalArgumentException("Date must be set.");
         }
 
@@ -430,7 +479,14 @@ public class SNSClient {
         anniversary.setPassword(this.fPassword);
         anniversary.setRefDate(date);
 
-        return this.fXtmSoapPortType.anniversaryOp(anniversary);
+        return this.fXtmSoapPortType.anniversaryOp(anniversary);*/
+    	return null;
+    }
+    
+    
+    public Resource getHierachy(long depth, String direction, boolean includeSiblings,
+            String lang, String root) throws RemoteException {
+    	return getHierachy(this.fUrl, depth, direction, includeSiblings, lang, root);
     }
 
     /**
@@ -451,9 +507,25 @@ public class SNSClient {
      * @return The requestet hierachical notion.
      * @throws RemoteException
      */
-    public TopicMapFragment getHierachy(String association, long depth, String direction, boolean includeSiblings,
+    public Resource getHierachy(URL url, long depth, String direction, boolean includeSiblings,
             String lang, String root) throws RemoteException {
-        GetHierarchy hierarchy = new GetHierarchy();
+    	
+    	int pos;
+    	String uri = url.toString();
+    	// extract identifier from url to search for it via hierarchy-api
+		pos = uri.indexOf(url.getHost()) + url.getHost().length();
+    	
+    	// create an empty model
+        Model model = ModelFactory.createDefaultModel();
+    	String params = "?dir="+direction;
+    	if (depth != 0) params += "&depth=" + depth; 
+    	if (includeSiblings) params += "&siblings="+includeSiblings;
+    	
+    	String doc = root.substring(root.lastIndexOf("/")+1);
+        Model hierarchy = model.read(uri.substring(0, pos) + "/"+lang+"/hierarchy/" + doc + ".rdf" + params);
+		return hierarchy.getResource(uri+doc);
+    	
+        /*GetHierarchy hierarchy = new GetHierarchy();
         hierarchy.setAssociation(association);
         hierarchy.setDepth(BigInteger.valueOf(depth));
         hierarchy.setDirection(direction);
@@ -463,7 +535,7 @@ public class SNSClient {
         hierarchy.setUser(this.fUserName);
         hierarchy.setPassword(this.fPassword);
 
-        return this.fXtmSoapPortType.getHierarchyOp(hierarchy);
+        return this.fXtmSoapPortType.getHierarchyOp(hierarchy);*/
     }
 
     /**
@@ -480,9 +552,38 @@ public class SNSClient {
      * @return A topic map fragment.
      * @throws RemoteException
      */
-    public synchronized TopicMapFragment getSimilarTerms(boolean ignoreCase, String[] terms, String lang)
-            throws RemoteException {
-        if ((null == terms) || (terms.length < 1)) {
+    public synchronized Resource getSimilarTerms(boolean ignoreCase, String[] terms, String lang) {
+    	
+    	// create an empty model
+        Model model = ModelFactory.createDefaultModel();
+
+        // prepare terms as url-parameter
+        String paramTerms = "";
+        for (String term : terms) {
+			paramTerms += term + "+";
+		}
+        paramTerms = paramTerms.substring(0, paramTerms.length()-1);
+        String query = this.fUrl.toString() + lang + "/similar.rdf?terms=" + paramTerms;
+
+        try {
+        	// read the RDF/XML file
+        	model.read(query);
+        } catch (DoesNotExistException e) {
+        	log.error("The search-function does not exist: " + query);
+        	return null;
+        } catch (Exception e) {
+        	log.error("The URI seems to have a problem: " + query);
+        	return null;
+        }
+
+        // write it to standard out
+        if (log.isDebugEnabled()) {
+            model.write(System.out);
+        }
+        
+        return model.getResource(query + "#top");
+    	
+        /*if ((null == terms) || (terms.length < 1)) {
             throw new IllegalArgumentException("No terms set.");
         }
 
@@ -497,7 +598,7 @@ public class SNSClient {
         }
         getSimilarTerms.setTerm(terms);
 
-        return this.fXtmSoapPortType.getSimilarTermsOp(getSimilarTerms);
+        return this.fXtmSoapPortType.getSimilarTermsOp(getSimilarTerms);*/
     }
 
     /**
@@ -507,7 +608,7 @@ public class SNSClient {
      *            Timeout in milliseconds.
      */
     public void setTimeout(final int timeout) {
-        this.fSoapBinding.setTimeout(timeout);
+        //this.fSoapBinding.setTimeout(timeout);
     }
 
     /**

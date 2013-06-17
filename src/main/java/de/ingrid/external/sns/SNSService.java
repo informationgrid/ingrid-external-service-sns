@@ -10,8 +10,8 @@ import java.util.ResourceBundle;
 import org.apache.axis.AxisFault;
 import org.apache.log4j.Logger;
 
+import com.hp.hpl.jena.rdf.model.Resource;
 import com.slb.taxi.webservice.xtm.stubs.FieldsType;
-import com.slb.taxi.webservice.xtm.stubs.SearchType;
 import com.slb.taxi.webservice.xtm.stubs.TopicMapFragment;
 import com.slb.taxi.webservice.xtm.stubs.xtm.Topic;
 
@@ -22,10 +22,8 @@ import de.ingrid.external.om.FullClassifyResult;
 import de.ingrid.external.om.Location;
 import de.ingrid.external.om.RelatedTerm;
 import de.ingrid.external.om.Term;
-import de.ingrid.external.om.Term.TermType;
 import de.ingrid.external.om.TreeTerm;
 import de.ingrid.external.om.impl.LocationImpl;
-import de.ingrid.external.om.impl.TermImpl;
 import de.ingrid.external.sns.SNSMapper.HierarchyDirection;
 
 /**
@@ -53,14 +51,14 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 
     	if (log.isInfoEnabled()) {
     		log.info("initializing SNSService, creating SNSClient ! username=" + resourceBundle.getString("sns.username")
-    				+ " " + resourceBundle.getString("sns.serviceURL"));
+    				+ " " + resourceBundle.getString("sns.serviceURL.thesaurus"));
     	}
 
     	snsClient = new SNSClient(
     			resourceBundle.getString("sns.username"),
     			resourceBundle.getString("sns.password"),
     			resourceBundle.getString("sns.language"),
-        		new URL(resourceBundle.getString("sns.serviceURL")));
+        		new URL(resourceBundle.getString("sns.serviceURL.thesaurus")));
     	snsClient.setTimeout(new Integer(resourceBundle.getString("sns.timeout")));
     	snsMapper = SNSMapper.getInstance(resourceBundle);
     }
@@ -155,7 +153,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 	public Location[] findLocationsFromQueryTerm(String queryTerm,
 			QueryType typeOfQuery, de.ingrid.external.GazetteerService.MatchingType matching, Locale language) {
     	String path = getSNSLocationPath(typeOfQuery);
-    	SearchType searchType = getSNSSearchType(matching);
+    	String searchType = getSNSSearchType(matching);
     	String langFilter = getSNSLanguageFilter(language);
     	boolean addDescriptors = false;
 
@@ -163,10 +161,10 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     		log.debug("findLocationsFromQueryTerm(): " + queryTerm + " " + path + " " + searchType + " " + langFilter);
     	}
 
-    	Topic[] topics = snsFindTopics(queryTerm, path, searchType,	addDescriptors, langFilter);
+    	Resource topics = snsFindTopics(queryTerm, path, searchType, addDescriptors, langFilter);
 
     	boolean checkExpired = true;
-    	List<Location> resultList = snsMapper.mapToLocations(topics, checkExpired, langFilter);
+    	List<Location> resultList = null;// snsMapper.mapToLocations(topics, checkExpired, langFilter);
 
     	if (log.isDebugEnabled()) {
     		log.debug("return locations.size: " + resultList.size());
@@ -180,16 +178,16 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 	@Override
 	public Term[] findTermsFromQueryTerm(String queryTerm, de.ingrid.external.ThesaurusService.MatchingType matching,
 			boolean addDescriptors, Locale language) {
-    	SearchType searchType = getSNSSearchType(matching);
+    	String searchType = getSNSSearchType(matching);
     	String langFilter = getSNSLanguageFilter(language);
 
     	if (log.isDebugEnabled()) {
     		log.debug("findTermsFromQueryTerm(): " + queryTerm + " " + searchType + " " + langFilter);
     	}
 
-    	Topic[] topics = snsFindTopics(queryTerm, SNS_FILTER_THESA, searchType,
+    	Resource res = snsFindTopics(queryTerm, SNS_FILTER_THESA, searchType,
     			addDescriptors, langFilter);
-    	List<Term> resultList = snsMapper.mapToTerms(topics, null, langFilter);
+    	List<Term> resultList = snsMapper.mapToTerms(res, null, langFilter);
 
     	if (log.isDebugEnabled()) {
     		log.debug("return locations.size: " + resultList.size());
@@ -214,12 +212,15 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     		log.debug("getHierarchyNextLevel(): " + termId + " " + langFilter);
     	}
 
-		TopicMapFragment mapFragment = snsGetHierarchy(termId,
+		Resource mapFragment = snsGetHierarchy(termId,
 				depth, direction, includeSiblings, langFilter);
 
 		// we also need language for additional filtering ! SNS delivers wrong results !
-    	List<TreeTerm> resultList =
-    		snsMapper.mapToTreeTerms(termId, direction, mapFragment, langFilter);
+		List<TreeTerm> resultList = null;
+		if (termId == null)
+			resultList = snsMapper.mapRootToTreeTerms(termId, direction, mapFragment, langFilter);
+		else
+			resultList = snsMapper.mapToTreeTerms(termId, direction, mapFragment, langFilter);
 
     	if (log.isDebugEnabled()) {
     		log.debug("return terms.size: " + resultList.size());
@@ -239,11 +240,12 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     		log.debug("getHierarchyPathToTop(): " + termId + " " + langFilter);
     	}
 
-		TopicMapFragment mapFragment = snsGetHierarchy(termId,
+		Resource hierarchy = snsGetHierarchy(termId,
 				depth, direction, includeSiblings, langFilter);
 
-    	List<TreeTerm> resultList =
-    		snsMapper.mapToTreeTerms(termId, direction, mapFragment, langFilter);
+		if (hierarchy == null) return null;
+		
+    	List<TreeTerm> resultList = snsMapper.mapToTreeTerms(termId, direction, hierarchy, langFilter);
 
     	if (log.isDebugEnabled()) {
     		log.debug("return startTerm: " + resultList.get(0));
@@ -260,8 +262,9 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     		log.debug("getSimilarTermsFromNames(): " + names + " " + langFilter);
     	}
 
-    	Topic[] topics = snsGetSimilarTerms(names, ignoreCase, langFilter);
-    	List<Term> resultList = snsMapper.mapToTerms(topics, null, langFilter);
+    	//Resource topics = snsGetSimilarTerms(names, ignoreCase, langFilter);
+    	Resource resSimilarTerms = snsClient.getSimilarTerms(ignoreCase, names, langFilter);
+    	List<Term> resultList = snsMapper.mapSimilarToTerms(resSimilarTerms, langFilter);
 
     	if (log.isDebugEnabled()) {
     		log.debug("return terms.size: " + resultList.size());
@@ -279,9 +282,9 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     	}
 
     	// no language in SNS for getPSI !!!
-		TopicMapFragment mapFragment = snsGetPSI(termId, SNS_FILTER_THESA);
+		//TopicMapFragment mapFragment = snsGetPSI(termId, SNS_FILTER_THESA);
 
-    	List<RelatedTerm> resultList = snsMapper.mapToRelatedTerms(termId, mapFragment, langFilter);
+    	List<RelatedTerm> resultList = null; //snsMapper.mapToRelatedTerms(termId, mapFragment, langFilter);
 
     	if (log.isDebugEnabled()) {
     		log.debug("return terms.size: " + resultList.size());
@@ -292,7 +295,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 
 	@Override
 	public Term getTerm(String termId, Locale language) {
-    	Term result = null;
+    	//Term result = null;
     	String langFilter = getSNSLanguageFilter(language);
 
     	if (log.isDebugEnabled()) {
@@ -300,22 +303,27 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     	}
 
     	// no language in SNS for getPSI !!!
-    	Topic[] topics = snsMapper.getTopics(snsGetPSI(termId, SNS_FILTER_THESA));
-    	if (topics != null) {
-            for (Topic topic : topics) {
-            	if (topic.getId().equals(termId)) {
-            		result = snsMapper.mapToTerm(topic, new TermImpl(), langFilter);
-            		break;
-            	}
-            }
-
+    	TreeTerm topic = null;
+    	Resource term = snsClient.getTerm(termId, langFilter);//.getResource(termId);
+    	
+    	if (term != null) {
+	    	topic = snsMapper.mapTreeTerm(term, langFilter);
+	    	/*if (topics != null) {
+	            for (Topic topic : topics) {
+	            	if (topic.getId().equals(termId)) {
+	            		result = snsMapper.mapToTerm(topic, new TermImpl(), langFilter);
+	            		break;
+	            	}
+	            }
+	
+	    	}*/
+	
+	    	if (log.isDebugEnabled()) {
+	    		log.debug("return term: " + topic);
+	    	}
     	}
 
-    	if (log.isDebugEnabled()) {
-    		log.debug("return term: " + result);
-    	}
-
-	    return result;
+	    return topic;
 	}
 
 	@Override
@@ -330,7 +338,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     	Topic[] topics = getTopicsFromMapFragment(snsAutoClassifyText(text,
     			analyzeMaxWords, FilterType.ONLY_TERMS, ignoreCase, langFilter));
 
-    	List<Term> resultList = snsMapper.mapToTerms(topics, TermType.DESCRIPTOR, langFilter);
+    	List<Term> resultList = null; //snsMapper.mapToTerms(topics, TermType.DESCRIPTOR, langFilter);
 
     	if (log.isDebugEnabled()) {
     		log.debug("return terms.size: " + resultList.size());
@@ -390,11 +398,10 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     // ----------------------- PRIVATE -----------------------------------
 
 	/** Call SNS findTopics. Map passed params to according SNS params. */
-	private Topic[] snsFindTopics(String queryTerms,
-			String path, SearchType searchType, boolean addDescriptors, String langFilter) {
-		Topic[] topics = null;
+	private Resource snsFindTopics(String queryTerms,
+			String path, String searchType, boolean addDescriptors, String langFilter) {
 
-    	TopicMapFragment mapFragment = null;
+    	Resource mapFragment = null;
     	try {
     		mapFragment = snsClient.findTopics(queryTerms, path, searchType,
     	            FieldsType.captors, 0, 500, langFilter, addDescriptors);
@@ -402,14 +409,14 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 	    	log.error("Error calling snsClient.findTopics", e);
 	    }
 	    
-	    if (null != mapFragment) {
+	    /*if (null != mapFragment) {
 	    	topics = mapFragment.getTopicMap().getTopic();
-	    }
-	    return topics;
+	    }*/
+	    return mapFragment;
 	}
 	
 	/** Call SNS getSimilarTerms. Map passed params to according SNS params. */
-	private Topic[] snsGetSimilarTerms(String[] queryTerms, boolean ignoreCase, String langFilter) {
+	/*private Topic[] snsGetSimilarTerms(String[] queryTerms, boolean ignoreCase, String langFilter) {
     	TopicMapFragment mapFragment = null;
     	try {
     		mapFragment = snsClient.getSimilarTerms(ignoreCase, queryTerms, langFilter);
@@ -435,7 +442,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 	    }
 
 	    return resultList.toArray(new Topic[resultList.size()]);
-	}
+	}*/
 	
 	/** Call SNS getPSI. Map passed params to according SNS params. */
 	private TopicMapFragment snsGetPSI(String topicId, String filter) {
@@ -487,23 +494,23 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     }
 
 	/** Call SNS getHierachy. Map passed params to according SNS params. */
-	private TopicMapFragment snsGetHierarchy(String root,
+	private Resource snsGetHierarchy(String root,
 			long depth, HierarchyDirection hierarchyDir, boolean includeSiblings,
 			String langFilter) {
 		if (root == null) {
-			root = "toplevel";
+			root = "scheme";
 		}
 		String direction = (hierarchyDir == HierarchyDirection.DOWN) ? "down" : "up";
 
-    	TopicMapFragment mapFragment = null;
+    	Resource resource = null;
     	try {
-            mapFragment = snsClient.getHierachy("narrowerTermAssoc", depth, direction,
+            resource = snsClient.getHierachy(depth, direction,
                     includeSiblings, langFilter, root);
     	} catch (Exception e) {
 	    	log.error("Error calling snsClient.getHierachy with root=" + root, e);
 	    }
 	    
-	    return mapFragment;
+	    return resource;
 	}
 	
 	/** Determine location path for SNS dependent from passed query type.
@@ -521,26 +528,26 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 	}
 
 	/** Determine SearchType for SNS dependent from passed matching type. */
-	private SearchType getSNSSearchType(de.ingrid.external.ThesaurusService.MatchingType matchingType) {
+	private String getSNSSearchType(de.ingrid.external.ThesaurusService.MatchingType matchingType) {
 		// default is all locations !
-    	SearchType searchType = SearchType.beginsWith;
+    	String searchType = "begins_with";
     	if (matchingType == de.ingrid.external.ThesaurusService.MatchingType.CONTAINS) {
-    		searchType = SearchType.contains;
+    		searchType = "contains";
     	} else if (matchingType == de.ingrid.external.ThesaurusService.MatchingType.EXACT) {
-    		searchType = SearchType.exact;    		
+    		searchType = "exact";    		
     	}
 		
     	return searchType;
 	}
 
 	/** Determine SearchType for SNS dependent from passed matching type. */
-	private SearchType getSNSSearchType(de.ingrid.external.GazetteerService.MatchingType matchingType) {
+	private String getSNSSearchType(de.ingrid.external.GazetteerService.MatchingType matchingType) {
 		// default is all locations !
-    	SearchType searchType = SearchType.beginsWith;
+    	String searchType = "begins_with";
     	if (matchingType == de.ingrid.external.GazetteerService.MatchingType.CONTAINS) {
-    		searchType = SearchType.contains;
+    		searchType = "contains";
     	} else if (matchingType == de.ingrid.external.GazetteerService.MatchingType.EXACT) {
-    		searchType = SearchType.exact;    		
+    		searchType = "exact";    		
     	}
 		
     	return searchType;

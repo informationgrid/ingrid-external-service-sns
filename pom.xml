@@ -15,6 +15,20 @@
     <connection>scm:svn:https://harrison.its-technidata.de:444/svn/ingrid/ingrid-external-service-sns/trunk</connection>
     <developerConnection>scm:svn:https://harrison.its-technidata.de:444/svn/ingrid/ingrid-external-service-sns/trunk</developerConnection>
   </scm>
+  <dependencyManagement>
+    <dependencies>
+        <dependency>
+          <groupId>xerces</groupId>
+          <artifactId>xercesImpl</artifactId>
+          <version>2.10.0</version>
+        </dependency>
+        <dependency>
+          <groupId>xml-apis</groupId>
+          <artifactId>xml-apis</artifactId>
+          <version>1.4.01</version>
+        </dependency>
+    </dependencies>
+  </dependencyManagement>
   <dependencies>
     <dependency>
       <groupId>de.ingrid</groupId>
@@ -28,6 +42,13 @@
       <groupId>uba</groupId>
       <artifactId>xtmStubs</artifactId>
     </dependency>
+    <!-- JENA libs for RDF support -->
+    <dependency>
+      <groupId>org.apache.jena</groupId>
+      <artifactId>jena-arq</artifactId>
+      <version>2.9.3</version>
+    </dependency>
+    <!-- End of JENA libs -->
     <dependency>
       <groupId>log4j</groupId>
       <artifactId>log4j</artifactId>

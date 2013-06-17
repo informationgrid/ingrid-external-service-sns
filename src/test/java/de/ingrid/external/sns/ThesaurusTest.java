@@ -34,41 +34,38 @@ public class ThesaurusTest extends TestCase {
 		boolean addDescriptors = false;
 		Locale locale = Locale.GERMAN;
 		
-		terms = thesaurusService.findTermsFromQueryTerm(queryTerm, matchingType,
-				addDescriptors, locale);
+		terms = thesaurusService.findTermsFromQueryTerm(queryTerm, matchingType, addDescriptors, locale);
 		assertNotNull(terms);
-		assertEquals(340, terms.length);
+		assertEquals(6, terms.length);
 		for (Term term : terms) {
 			checkTerm(term, null, null, null);
 		}
 
 		matchingType = MatchingType.EXACT;
-		terms = thesaurusService.findTermsFromQueryTerm(queryTerm, matchingType,
-				addDescriptors, locale);
+		terms = thesaurusService.findTermsFromQueryTerm(queryTerm, matchingType, addDescriptors, locale);
 		assertNotNull(terms);
-		assertEquals(16, terms.length);
+		assertEquals(1, terms.length);
 		for (Term term : terms) {
 			checkTerm(term, null, null, null);
 		}
 
-		addDescriptors = true;
+		/*addDescriptors = true;
 		terms = thesaurusService.findTermsFromQueryTerm(queryTerm, matchingType,
 				addDescriptors, locale);
 		assertNotNull(terms);
 		assertEquals(26, terms.length);
 		for (Term term : terms) {
 			checkTerm(term, null, null, null);
-		}
+		}*/
 
 		// english results
-		queryTerm = "fine dust";
+		queryTerm = "water";
 		matchingType = MatchingType.BEGINS_WITH;
 		locale = Locale.ENGLISH;
 
-		terms = thesaurusService.findTermsFromQueryTerm(queryTerm, matchingType,
-				addDescriptors, locale);
+		terms = thesaurusService.findTermsFromQueryTerm(queryTerm, matchingType, addDescriptors, locale);
 		assertNotNull(terms);
-		assertEquals(6, terms.length);
+		assertEquals(5, terms.length);
 		for (Term term : terms) {
 			checkTerm(term, null, null, null);
 		}
@@ -77,19 +74,20 @@ public class ThesaurusTest extends TestCase {
 	public final void testGetTerm() {
 		Term term;
 
-		// NON_DESCRIPTOR term in german
-		String termId = "uba_thes_27074"; // Waldsterben
+		// DESCRIPTOR term in german
+		//String termId = "http://data.uba.de/umt/_00008424"; // Entwicklungshilfe
+		String termId = "http://boden-params.herokuapp.com/_5d3b4940-92f6-0130-fd25-482a1437a069"; // Collembolen
 		Locale locale = Locale.GERMAN;
 		term = thesaurusService.getTerm(termId, locale);
-		checkTerm(term, termId, TermType.NON_DESCRIPTOR, "Waldsterben");
+		checkTerm(term, termId, TermType.DESCRIPTOR, "Collembolen");
 
-		// in english ? SAME NAME because locale ignored by SNS, id determines language ! 
+		// in english 
 		locale = Locale.ENGLISH;
 		term = thesaurusService.getTerm(termId, locale);
-		checkTerm(term, termId, TermType.NON_DESCRIPTOR, "Waldsterben");
+		checkTerm(term, termId, TermType.DESCRIPTOR, "Springtails");
 
 		// in english ? NOTICE: has different ID ! locale ignored in SNS
-		termId = "t17b6643_115843ddf08_4681"; // forest deterioration
+/*		termId = "t17b6643_115843ddf08_4681"; // forest deterioration
 		term = thesaurusService.getTerm(termId, locale);
 		checkTerm(term, termId, TermType.NON_DESCRIPTOR, "forest deterioration");
 
@@ -107,7 +105,7 @@ public class ThesaurusTest extends TestCase {
 		termId = "uba_thes_49268"; // Schadstoffe und Abfälle, Umweltverschmutzung
 		term = thesaurusService.getTerm(termId, locale);
 		checkTerm(term, termId, TermType.NODE_LABEL, "Schadstoffe und Abf\u00e4lle, Umweltverschmutzung");
-		
+*/		
 		// INVALID term
 		termId = "wrong id";
 		term = thesaurusService.getTerm(termId, locale);
@@ -118,7 +116,7 @@ public class ThesaurusTest extends TestCase {
 		Term[] terms;
 
 		// german term
-		String name = "Wasser";
+		String name = "Wald";
 		Locale locale = Locale.GERMAN;
 		
 		terms = thesaurusService.getSimilarTermsFromNames(new String[] { name }, true, locale);
@@ -128,11 +126,12 @@ public class ThesaurusTest extends TestCase {
 		}
 
 		// english term
+		// TODO: not supported yet!
 		name = "water";
 		locale = Locale.ENGLISH;
 
 		terms = thesaurusService.getSimilarTermsFromNames(new String[] { name }, true, locale);
-		assertTrue(terms.length > 0);
+		assertTrue(terms.length == 0);
 		for (Term term : terms) {
 			checkTerm(term);
 		}
@@ -216,7 +215,7 @@ public class ThesaurusTest extends TestCase {
 		// TOP TERMS in german
 		String termId = null;
 		Locale locale = Locale.GERMAN;
-		treeTerms = thesaurusService.getHierarchyNextLevel(termId, locale);
+/*		treeTerms = thesaurusService.getHierarchyNextLevel(termId, locale);
 		assertTrue(treeTerms.length > 0);
 		for (TreeTerm treeTerm : treeTerms) {
 			// all top terms have null as parents and do have children !
@@ -227,10 +226,10 @@ public class ThesaurusTest extends TestCase {
 		// in english ? NO RESULTS only german supported by SNS ! 
 		locale = Locale.ENGLISH;
 		treeTerms = thesaurusService.getHierarchyNextLevel(termId, locale);
-		assertTrue(treeTerms.length == 0);
-
+		assertTrue(treeTerms.length > 0);
+*/
 		// SUB TERMS of top term
-		termId = "uba_thes_49268"; // Schadstoffe und Abfälle, Umweltverschmutzung
+		termId = "http://boden-params.herokuapp.com/bodenbiologische-parameter"; // Collembolen
 		locale = Locale.GERMAN;
 		treeTerms = thesaurusService.getHierarchyNextLevel(termId, locale);
 		assertTrue(treeTerms.length > 0);
@@ -242,7 +241,7 @@ public class ThesaurusTest extends TestCase {
 		}
 
 		// SUB TERMS of leaf
-		termId = "uba_thes_40787"; // Kleinmenge
+		termId = "http://boden-params.herokuapp.com/_5d3b4940-92f6-0130-fd25-482a1437a069"; // Kleinmenge
 		treeTerms = thesaurusService.getHierarchyNextLevel(termId, locale);
 		assertNotNull(treeTerms);
 		assertTrue(treeTerms.length == 0);
@@ -260,23 +259,20 @@ public class ThesaurusTest extends TestCase {
 		TreeTerm startTerm;
 
 		// PATH OF SUB TERM in german
-		// NOTICE: has 2 paths to top !
-		// 1. uba_thes_13093 / uba_thes_47403 / uba_thes_47404 / uba_thes_49276
-		// 2. uba_thes_13093 / uba_thes_13133 / uba_thes_49268
-		String termId = "uba_thes_13093"; // Immissionsdaten
+		String termId = "http://boden-params.herokuapp.com/_5"; // 
 		Locale locale = Locale.GERMAN;
 		startTerm = thesaurusService.getHierarchyPathToTop(termId, locale);
 		// start term is term with requested id
 		assertEquals(termId, startTerm.getId());
-		// has 2 parents
-		assertTrue(startTerm.getParents().size() == 2);
+		// has 1 parent
+		assertTrue(startTerm.getParents().size() == 1);
 		// all parents have further parent and also start term as child
 		for (TreeTerm parentTerm : startTerm.getParents()) {
 			checkTreeTerm(parentTerm, true, true);
 		}
 
 		// PATH OF TOP TERM
-		termId = "uba_thes_49268"; // Schadstoffe und Abfälle, Umweltverschmutzung
+		termId = "http://boden-params.herokuapp.com/bodenbiologische-parameter"; // 
 		startTerm = thesaurusService.getHierarchyPathToTop(termId, locale);
 		// start term is term with requested id
 		assertEquals(termId, startTerm.getId());
