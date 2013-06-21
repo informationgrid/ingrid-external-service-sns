@@ -185,9 +185,9 @@ public class RDFUtils {
 			// bounding boxes have the format "x1,y1 x2,y2"
 			String[] coordinates = value.split(" ");
 			if (coordinates.length == 1) {
-				preparedCoordinates = coordinates[0].concat(coordinates[1]);
-			} else if (coordinates.length == 2) {
 				preparedCoordinates = coordinates[0];
+			} else if (coordinates.length == 2) {
+				preparedCoordinates = coordinates[0] + "," + coordinates[1];
 			}
 			String[] coordinatesSplitted = preparedCoordinates.split(",");
 

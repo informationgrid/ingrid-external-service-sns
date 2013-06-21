@@ -6,6 +6,7 @@
 package de.ingrid.external.sns;
 
 import java.net.URL;
+import java.net.URLEncoder;
 import java.rmi.RemoteException;
 
 import org.apache.log4j.Logger;
@@ -113,11 +114,14 @@ public class SNSClient {
     	// create an empty model
         Model model = ModelFactory.createDefaultModel();
         String query = null;
-        String params = "?t=labeling-skosxl-base&qt="+searchType+"&q=" + queryTerm + "&l[]=" + lang + "&page=" + offset;
+        // encode parameter
+        queryTerm = URLEncoder.encode(queryTerm, "utf8");
+        String params = "t=labeling-skosxl-base&qt="+searchType+"&q=" + queryTerm + "&l[]=" + lang + "&page=" + offset;
+        
         if (type == FilterType.ONLY_TERMS)
-        	query = this.fUrlThesaurus.toString() + "search.rdf" + params;
+        	query = this.fUrlThesaurus.toString() + "search.rdf?" + params;
         else if (type == FilterType.ONLY_LOCATIONS)
-        	query = this.fUrlGazetteer.toString() + "search.rdf" + params;
+        	query = this.fUrlGazetteer.toString() + "search.rdf?" + params;
         
         // String query = "http://boden-params.herokuapp.com/en/search.rdf?utf8=%E2%9C%93&t=labeling-skos-base&qt=begins_with&q=wasser&for=all&c=&l%5B%5D=de&l%5B%5D=en";
 
