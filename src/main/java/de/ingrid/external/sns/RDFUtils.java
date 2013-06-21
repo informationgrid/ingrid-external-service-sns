@@ -14,6 +14,7 @@ import com.hp.hpl.jena.rdf.model.StmtIterator;
 
 public class RDFUtils {
     
+	@Deprecated
     public static String getName(Model model) {
         RDFNode node = getObject(model, "skos", "prefLabel", "de");
         if (node != null) {
@@ -48,7 +49,7 @@ public class RDFUtils {
         if (node != null) {
             return node.toString();
         }
-        return null;
+        return res.getURI();
 
 	}
     
@@ -80,6 +81,10 @@ public class RDFUtils {
     
     public static RDFNode getParent(Resource resource) {
     	return getObject(resource, "skos", "broader");
+    }
+    
+    public static StmtIterator getParents(Resource resource) {
+    	return getObjects(resource, "skos", "broader");
     }
     
     private static RDFNode getObject(Model model, String namespace, String name) {
@@ -153,6 +158,92 @@ public class RDFUtils {
         	}
         }
 		return labels;
+	}
+	
+	public static ResIterator getConcepts(Model model) {
+		return getResources(model, "rdf", "type");
+	}
+	
+	public static String getDefinition(Resource res, String lang) {
+		RDFNode node = getObject(res, "skos", "definition", lang);
+        if (node != null) {
+            return node.asNode().getLiteralValue().toString();
+        }
+        return null;
+	}
+
+	public static float[] getBoundingBox(Resource res) {
+		//RDFNode bb = getObject(res, "gn", "boundingBox");
+		float[] bbFloat = null;
+		String nsURI = "http://www.geonames.org/ontology";
+        Property prop = res.getModel().createProperty(nsURI + "boundingBox");
+        StmtIterator stmts = res.listProperties(prop);
+        while (stmts.hasNext()) {
+        	Statement bb = stmts.next();
+			String preparedCoordinates = "";
+			String value = bb.getObject().toString();
+			// bounding boxes have the format "x1,y1 x2,y2"
+			String[] coordinates = value.split(" ");
+			if (coordinates.length == 1) {
+				preparedCoordinates = coordinates[0].concat(coordinates[1]);
+			} else if (coordinates.length == 2) {
+				preparedCoordinates = coordinates[0];
+			}
+			String[] coordinatesSplitted = preparedCoordinates.split(",");
+
+			// transform to floats
+			bbFloat = new float[coordinatesSplitted.length];
+			for (int i = 0; i < coordinatesSplitted.length; i++) {
+				bbFloat[i] = Float.valueOf(coordinatesSplitted[i]);
+			}
+			// prefer real bounding box instead of coordinate
+			if (bbFloat.length == 4) break;
+		}
+        return bbFloat;
+	}
+
+	public static String getMemberOf(Resource topic) {
+		RDFNode node = getObject(topic, "schema", "memberOf");
+		if (node == null) return null;
+		return node.asNode().getURI();
+	}
+
+	public static String getGemetRef(Resource res) {
+		RDFNode node = getObject(res, "skos", "closeMatch");
+		if (node != null) {
+            return node.asNode().getURI();
+        }
+		return null;
+	}
+
+	public static StmtIterator getRelatedConcepts(Resource res) {
+		return getObjects(res, "skos", "related");
+	}
+
+	public static String getEventId(Resource res) {
+		RDFNode node = getObject(res, "sdc", "link");
+		if (node != null) {
+            return node.asNode().getURI();
+        }
+		return null;
+	}
+
+	public static String getDateStart(Resource res) {
+		Resource temporalRes = getObject(res, "dct", "temporal").asResource();
+		RDFNode node = getObject(temporalRes, "dct", "start");
+        if (node != null) {
+            return node.asNode().getLiteralValue().toString();
+        }
+		return null;
+	}
+
+	public static String getDateEnd(Resource res) {
+		Resource temporalRes = getObject(res, "dct", "temporal").asResource();
+		RDFNode node = getObject(temporalRes, "dct", "end");
+		if (node != null) {
+			return node.asNode().getLiteralValue().toString();
+		}
+		return null;
 	}
 
 }
