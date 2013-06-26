@@ -2,6 +2,7 @@ package de.ingrid.external.sns;
 
 import java.net.URL;
 import java.rmi.RemoteException;
+import java.sql.Date;
 import java.util.Locale;
 import java.util.ResourceBundle;
 
@@ -10,14 +11,12 @@ import junit.framework.TestCase;
 import com.hp.hpl.jena.rdf.model.ResIterator;
 import com.hp.hpl.jena.rdf.model.Resource;
 
-import de.ingrid.external.FullClassifyService.FilterType;
-import de.ingrid.external.ThesaurusService.MatchingType;
 import de.ingrid.external.om.Event;
 
 public class SNSClientTest extends TestCase {
 
 	private SNSClient snsClient;
-	private SNSService thesaurusService;
+	private SNSService chronicalService;
 
 	public void setUp() {
 		ResourceBundle resourceBundle = ResourceBundle.getBundle("sns");
@@ -28,7 +27,7 @@ public class SNSClientTest extends TestCase {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		thesaurusService = snsService;
+		chronicalService = snsService;
 		
 		try {
 			snsClient = new SNSClient(
@@ -46,20 +45,20 @@ public class SNSClientTest extends TestCase {
 	
     public void testFindEventsAt() throws Exception {
     	// get all events by setting date to null
-    	Resource eventsRes = snsClient.findEvents("wasser", "contains", "FieldsType.allfields", 
+    	Resource eventsRes = snsClient.findEvents("wasser", "contains", null, 
         		0, null, "de", 10);
         assertNotNull(eventsRes);
         // TODO: result is 40 because result's numResultsPerPage is always 40
         assertEquals(40, RDFUtils.getResults(eventsRes).toList().size());
         
-        eventsRes = snsClient.findEvents("wasser", "contains", "FieldsType.allfields", 
+        eventsRes = snsClient.findEvents("wasser", "contains", null, 
         		0, "1976-08-31", "de", 10);
         assertNotNull(eventsRes);
         assertEquals(40, RDFUtils.getResults(eventsRes).toList().size());
     }
     
     public void testFindEventsFromTo() throws Exception {
-        Resource eventsRes = snsClient.findEvents("wasser", "contains", "FieldsType.allfields", 
+        Resource eventsRes = snsClient.findEvents("wasser", "contains", null, 
         		0, "1976-08-31", "1978-08-31", "de", 10);
         assertNotNull(eventsRes);
         assertEquals(40, RDFUtils.getResults(eventsRes).toList().size());
@@ -80,13 +79,13 @@ public class SNSClientTest extends TestCase {
 	public void testGetEventTerm() throws RemoteException {
 		// Deutsche Ereignisse
 		Locale lang = new Locale("de");
-		Event[] events = thesaurusService.findEventsFromQueryTerm("wasser", de.ingrid.external.ChronicleService.MatchingType.CONTAINS, null, null, lang);
+		Event[] events = chronicalService.findEventsFromQueryTerm("wasser", de.ingrid.external.ChronicleService.MatchingType.CONTAINS, null, null, null, lang);
 		assertTrue(events.length > 0);
 		for (Event event : events) {
 			checkEvent(event);
 		}
 		
-		events = thesaurusService.getAnniversaries("10.10.1978", lang);
+		events = chronicalService.getAnniversaries("10.10.1978", lang);
 		assertTrue(events.length > 0);
 		for (Event event : events) {
 			checkEvent(event);
@@ -99,6 +98,15 @@ public class SNSClientTest extends TestCase {
 		res = snsClient.anniversary("2013-01-01", "en");
 		resIt = RDFUtils.getConcepts(res.getModel());
 		assertTrue(resIt.toList().size() > 0);*/
+	}
+	
+	public void testGetEvent() throws RemoteException {
+		Event e = chronicalService.getEvent("http://iqvoc-chronicle.innoq.com/t2a639eb3_12b99052384_-37ba", new Locale("de"));
+		assertEquals(Date.valueOf("2010-10-05"), e.getTimeAt());
+		assertEquals(Date.valueOf("2010-10-05"), e.getTimeRangeFrom());
+		assertEquals(Date.valueOf("2010-10-05"), e.getTimeRangeTo());
+		assertEquals("http://iqvoc-chronicle.innoq.com/t2a639eb3_12b99052384_-37ba", e.getId());
+		assertEquals(2, e.getLinks().size());
 	}
 	
 	private void checkEvent(Event event) {

@@ -286,6 +286,21 @@ public class ThesaurusTest extends TestCase {
 		assertEquals(termId, startTerm.getId());
 		// has NO parent
 		assertNull(startTerm.getParents());
+		
+		// PATH OF DEEP SUB TERM
+		termId = "http://umthes.innoq.com/_00047197"; // Organo-Ton
+		startTerm = thesaurusService.getHierarchyPathToTop(termId, locale);
+		// start term is term with requested id
+		assertEquals(termId, startTerm.getId());
+		String[] expectedPath = {"Organo-Ton", "Bentonit", "Ton [Mineral]", "Sedimentgestein", "Gestein"};
+		TreeTerm currentTerm = startTerm;
+		for (String expectedParent : expectedPath) {
+			assertNotNull("No further parent element when was expected: " + expectedParent, currentTerm);
+			assertEquals(expectedParent, currentTerm.getName());
+			currentTerm = currentTerm.getParents() != null ? currentTerm.getParents().get(0) : null;
+		}
+		
+		
 /*
 		// in english ? NO RESULTS only german supported by SNS !
 		termId = "t16e1782_1225eb9489f_-6afd"; // water

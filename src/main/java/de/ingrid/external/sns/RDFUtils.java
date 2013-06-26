@@ -14,35 +14,14 @@ import com.hp.hpl.jena.rdf.model.StmtIterator;
 
 public class RDFUtils {
     
-	@Deprecated
-    public static String getName(Model model) {
-        RDFNode node = getObject(model, "skos", "prefLabel", "de");
-        if (node != null) {
-            return node.asNode().getLiteralValue().toString();
-        }
-        return null;
-    }
-    
     public static String getName(Resource res, String lang) {
 		RDFNode node = getObject(res, "skos", "prefLabel", lang);
+		if (node == null) node = getObject(res, "skos", "officialName", lang);
         if (node != null) {
             return node.asNode().getLiteralValue().toString();
         }
         return null;
 	}
-    
-    public static String getId(Model model) {
-        ResIterator rIt = model.listSubjects();
-        String foundUri = null;
-        while (rIt.hasNext()) {
-            Resource r = rIt.next();
-            if (r.getURI() != null) {
-                foundUri = r.getURI();
-                break;            
-            }
-        }
-        return foundUri;
-    }
     
     public static String getId(Resource res) {
 		RDFNode node = getObject(res, "sdc", "link");
@@ -100,17 +79,6 @@ public class RDFUtils {
         Property prop = res.getModel().createProperty(nsURI + name);
         Statement stmt = res.getProperty(prop);
         return stmt != null ? stmt.getObject() : null;
-    }
-    
-    private static RDFNode getObject(Model model, String namespace, String name, String lang) {
-        NodeIterator it = getObjects(model, namespace, name);
-        while (it.hasNext()) {
-            RDFNode node = it.next();
-            if (lang.equals(node.asLiteral().getLanguage())) {
-                return node;
-            }
-        }
-        return null;
     }
     
     private static RDFNode getObject(Resource res, String namespace, String name, String lang) {
@@ -240,6 +208,38 @@ public class RDFUtils {
 	public static String getDateEnd(Resource res) {
 		Resource temporalRes = getObject(res, "dct", "temporal").asResource();
 		RDFNode node = getObject(temporalRes, "dct", "end");
+		if (node != null) {
+			return node.asNode().getLiteralValue().toString();
+		}
+		return null;
+	}
+
+	public static StmtIterator getFurtherInfo(Resource res) {
+		
+		return getObjects(res, "rdfs", "seeAlso");
+	}
+
+	public static String getDctTitle(Resource info) {
+		RDFNode node = getObject(info, "dct", "title");
+		if (node != null) {
+			return node.asNode().getLiteralValue().toString();
+		}
+		return null;
+	}
+
+	public static String getDctPage(Resource info) {
+		RDFNode node = getObject(info, "foaf", "page");
+		if (node != null) {
+			if (node.asNode().isURI())
+				return node.asNode().getURI();
+			else
+				return node.asNode().toString();
+		}
+		return null;
+	}
+
+	public static String getExpireDate(Resource res) {
+		RDFNode node = getObject(res, "schema", "expires");
 		if (node != null) {
 			return node.asNode().getLiteralValue().toString();
 		}

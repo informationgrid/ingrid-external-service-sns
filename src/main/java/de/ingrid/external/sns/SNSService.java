@@ -12,8 +12,8 @@ import org.apache.log4j.Logger;
 
 import com.hp.hpl.jena.rdf.model.NodeIterator;
 import com.hp.hpl.jena.rdf.model.RDFNode;
-import com.hp.hpl.jena.rdf.model.ResIterator;
 import com.hp.hpl.jena.rdf.model.Resource;
+import com.hp.hpl.jena.rdf.model.StmtIterator;
 
 import de.ingrid.external.ChronicleService;
 import de.ingrid.external.FullClassifyService;
@@ -82,15 +82,25 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     	// no language in SNS for getPSI !!!
     	// NOTICE: includes location with passed id at FIRST position !
     	//Topic[] topics = snsMapper.getTopics(snsGetPSI(locationId, SNS_FILTER_LOCATIONS));
-    	Resource location = snsClient.getTerm(locationId, langFilter, FilterType.ONLY_LOCATIONS);
-    	if (location != null) {
+    	Resource topic = snsClient.getTerm(locationId, langFilter, FilterType.ONLY_LOCATIONS);
+    	if (topic != null) {
 
 	    	boolean checkExpired = true;
-	    	List<Location> resultList = snsMapper.mapToLocationsFromLocation(location, checkExpired, langFilter);
+	    	// TODO: iterate over all related locations fetched exclusively to get all information about
+	    	// type and expiration date
+	    	//List<Location> resultList = snsMapper.mapToLocationsFromLocation(location, checkExpired, langFilter);
+	    	List<Location> resultList = new ArrayList<Location>();
+
+	    	StmtIterator it = RDFUtils.getRelatedConcepts(topic);
+	    	while (it.hasNext()) {
+				Resource nodeRes = it.next().getResource();
+				Resource locationRes = snsClient.getTerm(RDFUtils.getId(nodeRes), langFilter, FilterType.ONLY_LOCATIONS);
+				resultList.add(snsMapper.mapToLocation(locationRes, new LocationImpl(), langFilter));
+			}
 	    	
 	    	// NOTICE: includes location with passed id to the beginning!
 	    	if (includeFrom)
-	    		resultList.add(0, snsMapper.mapToLocation(location, new LocationImpl(), langFilter));
+	    		resultList.add(0, snsMapper.mapToLocation(topic, new LocationImpl(), langFilter));
 	
 	    	if (log.isDebugEnabled()) {
 	    		log.debug("return locations.size: " + resultList.size());
@@ -116,9 +126,10 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 	    	result = snsMapper.mapToLocation(location, new LocationImpl(), langFilter);
 	    	
 	    	// TODO: get typeName by requesting typeId and receive the name
-	    	location = snsClient.getTerm(result.getTypeId(), langFilter, FilterType.ONLY_LOCATIONS);
+	    	/*location = snsClient.getTerm(result.getTypeId(), langFilter, FilterType.ONLY_LOCATIONS);
 	    	if (location != null)
 	    		result.setTypeName(RDFUtils.getName(location, langFilter));
+	    	*/
     	}
     	
     	if (log.isDebugEnabled()) {
@@ -155,6 +166,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 	public Location[] findLocationsFromQueryTerm(String queryTerm,
 			QueryType typeOfQuery, de.ingrid.external.GazetteerService.MatchingType matching, Locale language) {
     	FilterType type = FilterType.ONLY_LOCATIONS;//getSNSLocationPath(typeOfQuery);
+    	List<Location> resultList = new ArrayList<Location>();
     	String searchType = getSNSSearchType(matching);
     	String langFilter = getSNSLanguageFilter(language);
     	boolean addDescriptors = false;
@@ -168,7 +180,15 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     	if (topics == null) return new Location[0];
     	
     	boolean checkExpired = true;
-    	List<Location> resultList = snsMapper.mapToLocationsFromResults(topics, checkExpired, langFilter);
+    	
+    	NodeIterator it = RDFUtils.getResults(topics);
+    	while (it.hasNext()) {
+			RDFNode node = it.next();
+			Resource locationRes = snsClient.getTerm(RDFUtils.getId(node.asResource()), langFilter, type);
+			resultList.add(snsMapper.mapToLocation(locationRes, new LocationImpl(), langFilter));
+		}
+    	//List<Location> resultList = snsMapper.mapToLocationsFromResults(topics, checkExpired, langFilter);
+    	// TODO: remove expired locations
 
     	if (log.isDebugEnabled()) {
     		log.debug("return locations.size: " + resultList.size());
@@ -249,6 +269,9 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 		if (hierarchy == null) return null;
 		
     	List<TreeTerm> resultList = snsMapper.mapToTreeTerms(termId, direction, hierarchy, langFilter);
+    	
+    	// TODO: get unresolved parents due to too short hierarchy?
+    	//termId = getTermWithUnknownParents(resultList);
 
     	if (log.isDebugEnabled()) {
     		log.debug("return startTerm: " + resultList.get(0));
@@ -367,9 +390,8 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     		log.debug("autoClassifyURL(): " + url + " maxWords=" + analyzeMaxWords + " ignoreCase=" + ignoreCase + " " + langFilter);
     	}
 
-		Resource mapFragment =
-			snsAutoClassifyURL(url, analyzeMaxWords, filter, ignoreCase, langFilter);
-		FullClassifyResult result = snsMapper.mapToFullClassifyResult(mapFragment, langFilter);
+		Resource[] resources = snsAutoClassifyURL(url, filter, langFilter);
+		FullClassifyResult result = snsMapper.mapToFullClassifyResult(resources[0], resources[1], resources[2], langFilter);
 
     	if (log.isDebugEnabled()) {
     		int numTerms = result.getTerms() != null ? result.getTerms().size() : 0;
@@ -480,13 +502,21 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     	return res;
     }
 
-	/** Call SNS autoClassify. Map passed params to according SNS params. */
-    private Resource snsAutoClassifyURL(URL url,
-    		int analyzeMaxWords, FilterType filterType, boolean ignoreCase, String langFilter) {
-    	String filter = getSNSFilterType(filterType);
-    	Resource mapFragment = null;
+	/**
+	 * 
+	 * @param url is the url to analyze
+	 * @param langFilter
+	 * @return the resources in the following order: Thesaurus, Gazetteer, Chronical
+	 */
+    private Resource[] snsAutoClassifyURL(URL url, FilterType filter, String langFilter) {
+    	Resource[] resources = new Resource[3];
     	try {
-    		mapFragment = snsClient.autoClassifyToUrl(url.toString(), analyzeMaxWords, filter, ignoreCase, langFilter);
+    		if (filter == null || filter == FilterType.ONLY_TERMS)
+    			resources[0] = snsClient.autoClassifyToUrl(url.toString(), FilterType.ONLY_TERMS, langFilter);
+    		if (filter == null || filter == FilterType.ONLY_LOCATIONS)
+    			resources[1] = snsClient.autoClassifyToUrl(url.toString(), FilterType.ONLY_LOCATIONS, langFilter);
+    		if (filter == null || filter == FilterType.ONLY_EVENTS)
+    			resources[2] = snsClient.autoClassifyToUrl(url.toString(), FilterType.ONLY_EVENTS, langFilter);
 
     	} catch (AxisFault f) {
     		log.info("Error while calling autoClassifyToUrl.", f);
@@ -499,7 +529,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 	    	log.error("Error calling snsClient.autoClassifyToUrl", e);
     	}
     	
-    	return mapFragment;
+    	return resources;
     }
 
 	/** Call SNS getHierachy. Map passed params to according SNS params. */
@@ -605,22 +635,31 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 	}
 
 	@Override
-	public Event[] findEventsFromQueryTerm(String term, de.ingrid.external.ChronicleService.MatchingType matchingType, String dateStart,
-			String dateEnd, Locale lang) {
+	public Event[] findEventsFromQueryTerm(String term, de.ingrid.external.ChronicleService.MatchingType matchingType, 
+			String[] inCollections, String dateStart, String dateEnd, Locale lang) {
 		List<Event> events = new ArrayList<Event>();
 		
 		String langFilter = getSNSLanguageFilter(lang);
 		String type = getSNSSearchType(matchingType);
 		
+		// create an empty collection so that code below is executed!
+		if (inCollections == null) inCollections = new String[] { "" };
+		
 		try {
-			Resource eventsRes = snsClient.findEvents(term, type, "", 0, dateStart, dateEnd, langFilter, 10);
-			NodeIterator it = RDFUtils.getResults(eventsRes);
-	    	while (it.hasNext()) {
-	    		RDFNode eventNode = it.next();
-	    		String eventId = RDFUtils.getEventId(eventNode.asResource());
-	    		Resource eventRes = snsClient.getTerm(eventId, langFilter, FilterType.ONLY_EVENTS);
-	    		events.add(snsMapper.mapToEvent(eventRes, langFilter));
-	    	}
+			List<String> uniqueResults = new ArrayList<String>();
+			// TODO: iterate over all collections or request more search results and filter afterwards 
+			for (String collection : inCollections) {
+				Resource eventsRes = snsClient.findEvents(term, type, collection, 0, dateStart, dateEnd, langFilter, 10);
+				NodeIterator it = RDFUtils.getResults(eventsRes);
+		    	while (it.hasNext()) {
+		    		RDFNode eventNode = it.next();
+		    		String eventId = RDFUtils.getEventId(eventNode.asResource());
+		    		if (uniqueResults.contains(eventId)) continue;
+		    		Resource eventRes = snsClient.getTerm(eventId, langFilter, FilterType.ONLY_EVENTS);
+		    		events.add(snsMapper.mapToEvent(eventRes, langFilter));
+		    		uniqueResults.add(eventId);
+		    	}
+			}
 		} catch (RemoteException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

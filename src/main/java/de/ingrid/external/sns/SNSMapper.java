@@ -1,5 +1,6 @@
 package de.ingrid.external.sns;
 
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -18,6 +19,8 @@ import com.hp.hpl.jena.rdf.model.StmtIterator;
 
 import de.ingrid.external.om.Event;
 import de.ingrid.external.om.FullClassifyResult;
+import de.ingrid.external.om.IndexedDocument;
+import de.ingrid.external.om.Link;
 import de.ingrid.external.om.Location;
 import de.ingrid.external.om.RelatedTerm;
 import de.ingrid.external.om.RelatedTerm.RelationType;
@@ -26,6 +29,8 @@ import de.ingrid.external.om.Term.TermType;
 import de.ingrid.external.om.TreeTerm;
 import de.ingrid.external.om.impl.EventImpl;
 import de.ingrid.external.om.impl.FullClassifyResultImpl;
+import de.ingrid.external.om.impl.IndexedDocumentImpl;
+import de.ingrid.external.om.impl.LinkImpl;
 import de.ingrid.external.om.impl.LocationImpl;
 import de.ingrid.external.om.impl.RelatedTermImpl;
 import de.ingrid.external.om.impl.TermImpl;
@@ -40,7 +45,8 @@ public class SNSMapper {
     public enum HierarchyDirection { DOWN, UP }
 
 	private final static Logger log = Logger.getLogger(SNSMapper.class);
-	private final static SimpleDateFormat expiredDateParser = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.S");
+	//private final static SimpleDateFormat expiredDateParser = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.S");
+	private final static SimpleDateFormat expiredDateParser = new SimpleDateFormat("yyyy-MM-dd");
 
 	private static SNSMapper myInstance;
 
@@ -114,12 +120,14 @@ public class SNSMapper {
      */
     public List<Location> mapToLocationsFromResults(Resource topics, boolean removeExpired, String langFilter) {
     	List<Location> resultList = new ArrayList<Location>();
+    	if (topics == null) return resultList;
 
     	NodeIterator it = RDFUtils.getResults(topics);
     	while (it.hasNext()) {
 			RDFNode node = it.next();
 			// TODO: location typeId not in searchResult
 			// iterate over all exclusively fetched terms!?
+			
 			resultList.add(mapToLocation(node.asResource(), new LocationImpl(), langFilter));
 		}
         	
@@ -206,7 +214,7 @@ public class SNSMapper {
     	// ALSO EXPIRED IF REQUESTED !
     	if (checkExpired) {
     		// TODO: check expired!
-    		outLocation.setIsExpired(false);//isExpired(topic));
+    		outLocation.setIsExpired(isExpired(topic));
     	}
     	
     	
@@ -491,7 +499,7 @@ public class SNSMapper {
 			term.setName(RDFUtils.getName(termResource, langFilter));
 			term.setType(Term.TermType.DESCRIPTOR);
 			resultList.add(term);
-			RDFNode parent = RDFUtils.getParent(termResource.getModel());
+			RDFNode parent = RDFUtils.getParent(termResource);
 			while (parent != null) {
 				TreeTerm parentTerm = new TreeTermImpl();
 				parentTerm.setId(RDFUtils.getId(parent.asResource()));
@@ -618,9 +626,9 @@ public class SNSMapper {
      * @param topics sns topics representing events
      * @return the events NEVER NULL
      */
-    /*
     public List<Event> mapToEvents(Resource eventsRes, String lang) {
     	List<Event> resultList = new ArrayList<Event>();
+    	if (eventsRes == null) return resultList;
 
     	NodeIterator it = RDFUtils.getResults(eventsRes);
     	while (it.hasNext()) {
@@ -630,7 +638,7 @@ public class SNSMapper {
 		
     	
     	return resultList;
-    }*/
+    }
 
     /** Creates an Event from the given topic.<br/>
      * @param eventRes sns topic representing an event
@@ -650,6 +658,15 @@ public class SNSMapper {
     	result.setTimeAt(convertToDate(RDFUtils.getDateStart(eventRes)));
     	result.setTimeRangeFrom(result.getTimeAt());
     	result.setTimeRangeTo(convertToDate(RDFUtils.getDateEnd(eventRes)));
+    	
+    	StmtIterator moreInfo = RDFUtils.getFurtherInfo(eventRes);
+    	while (moreInfo.hasNext()) {
+    		Link l = new LinkImpl();
+    		Resource info = moreInfo.next().getResource();
+    		l.setTitle(RDFUtils.getDctTitle(info));
+    		l.setLinkAddress(RDFUtils.getDctPage(info));
+    		result.addLink(l);
+    	}
     	
     	return result;
     	/*
@@ -674,39 +691,19 @@ public class SNSMapper {
     }
 
     /** Creates a FullClassifyResult from the given mapFragment
-     * @param inMap result of fullClassify as delivered by SNS
+     * @param resThesaurus result of fullClassify as delivered by Thesaurus-SNS
+     * @param resGazetteer result of fullClassify as delivered by Gazetteer-SNS
+     * @param resChronical result of fullClassify as delivered by Chronical-SNS
      * @param langFilter pass requested SNS language for mapping of title ... 
      * @return the FullClassifyResult NEVER NULL
      */
-    public FullClassifyResult mapToFullClassifyResult(Resource inMap, String langFilter) {
+    public FullClassifyResult mapToFullClassifyResult(Resource resThesaurus, Resource resGazetteer, Resource resChronical, String langFilter) {
     	FullClassifyResultImpl result = new FullClassifyResultImpl();
     	
-    	//result.setIndexedDocument(mapToIndexedDocument(inMap.getIndexedDocument()));
-    	/*
-    	Topic[] topics = null; //inMap.getTopicMap().getTopic();
-    	if (null == topics) {
-    		topics = new Topic[0];
-    	}
-
-    	// sort topics into different Lists
-    	List<Topic> locTopics = new ArrayList<Topic>();
-    	List<Topic> thesaTopics = new ArrayList<Topic>();
-    	List<Topic> eventTopics = new ArrayList<Topic>();
-
-    	for (Topic topic : topics) {
-    		TopicType topicType = getTopicType(topic);
-    		if (topicType == TopicType.LOCATION) {
-    			locTopics.add(topic);
-    		} else if (topicType == TopicType.THESA) {
-    			thesaTopics.add(topic);
-    		} else if (topicType == TopicType.EVENT) {
-    			eventTopics.add(topic);
-    		}
-    	}*/
-    	
-    	// TODO: result.setLocations(mapToLocations(locTopics.toArray(new Topic[locTopics.size()]), true, langFilter));
-    	//result.setTerms(mapToTerms(thesaTopics.toArray(new Topic[thesaTopics.size()]), null, langFilter));
-    	//result.setEvents(mapToEvents(eventTopics.toArray(new Topic[eventTopics.size()])));
+    	result.setIndexedDocument(mapToIndexedDocument(resThesaurus));
+    	result.setLocations(mapToLocationsFromResults(resGazetteer, true, langFilter));
+    	result.setTerms(mapToTerms(resThesaurus, null, langFilter));
+    	result.setEvents(mapToEvents(resChronical, langFilter));
 
     	return result;
     }
@@ -715,10 +712,11 @@ public class SNSMapper {
      * @param inDoc result of fullClassify as delivered by SNS
      * @return the IndexedDocument NEVER NULL
      */
-    /*
-    private IndexedDocument mapToIndexedDocument(TopicMapFragmentIndexedDocument inDoc) {
+    private IndexedDocument mapToIndexedDocument(Resource inDoc) {
     	IndexedDocumentImpl result = new IndexedDocumentImpl();
 
+    	// TODO: implement
+    	/*
     	result.setClassifyTimeStamp(inDoc.getTimestamp());
     	result.setTitle(inDoc.getTitle());
     	result.setDescription(inDoc.get_abstract());
@@ -739,11 +737,10 @@ public class SNSMapper {
 
     	result.setTimeAt(convertToDate(inDoc.getAt()));
     	result.setTimeFrom(convertToDate(inDoc.getFrom()));
-    	result.setTimeTo(convertToDate(inDoc.getTo()));
+    	result.setTimeTo(convertToDate(inDoc.getTo()));*/
 
     	return result;
     }
-    */
 
 	/** Get topics from fragment
 	 * @param mapFragment sns result
@@ -924,26 +921,19 @@ public class SNSMapper {
         
         return false;
     }
-
-    private boolean isExpired(Topic topic) {
+*/
+    private boolean isExpired(Resource topic) {
         Date expDate = null;
-        Occurrence[] occurrences = topic.getOccurrence();
-        if (null != occurrences) {
-            for (Occurrence occ : occurrences) {
-                final InstanceOf instanceOf = occ.getInstanceOf();
-                if (instanceOf != null) {
-                    final String type = instanceOf.getTopicRef().getHref();
-                    if (type.endsWith("expiredOcc")) {
-                        try {
-                            expDate = expiredDateParser.parse(occ.getResourceData().get_value());
-                        } catch (ParseException e) {
-                            log.error("Not expected date format in sns expiredOcc.", e);
-                        }
-                    }
-                }
-            }
+        
+        String date = RDFUtils.getExpireDate(topic);
+        if (date != null) {
+	        try {
+	            expDate = expiredDateParser.parse(date);
+	        } catch (ParseException e) {
+	            log.error("Not expected date format in sns expiredOcc.", e);
+	        }
         }
-
+        
         boolean isExpired = false;
         if (expDate != null) {
         	isExpired = expDate.before(new Date());
@@ -951,6 +941,7 @@ public class SNSMapper {
 
         return isExpired;
     }
+    /*
 
     private String getGemetName(Topic topic) {
     	String result = null;

@@ -122,10 +122,10 @@ public class GazetteerTest extends TestCase {
 		assertFalse(location.getIsExpired());
 
 		// EXPIRED LOCATION !
-		locationId = "http://iqvoc-gazetteer.innoq.com/GEMEINDE0325300005"; // Gehrden
+		locationId = "http://iqvoc-gazetteer.innoq.com/GEMEINDE1510100000"; // Dessau
 		location = gazetteerService.getLocation(locationId, locale);
-		checkLocation(location, locationId, "Gehrden");
-		// TODO: assertTrue(location.getIsExpired());
+		checkLocation(location, locationId, "Dessau");
+		assertTrue(location.getIsExpired());
 
 		// INVALID location
 		locationId = "http://iqvoc-gazetteer.innoq.com/wrong-id";

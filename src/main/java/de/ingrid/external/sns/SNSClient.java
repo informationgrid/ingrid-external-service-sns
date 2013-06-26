@@ -118,10 +118,7 @@ public class SNSClient {
         queryTerm = URLEncoder.encode(queryTerm, "utf8");
         String params = "t=labeling-skosxl-base&qt="+searchType+"&q=" + queryTerm + "&l[]=" + lang + "&page=" + offset;
         
-        if (type == FilterType.ONLY_TERMS)
-        	query = this.fUrlThesaurus.toString() + "search.rdf?" + params;
-        else if (type == FilterType.ONLY_LOCATIONS)
-        	query = this.fUrlGazetteer.toString() + "search.rdf?" + params;
+       	query = getUrlByFilter(type) + "search.rdf?" + params;
         
         // String query = "http://boden-params.herokuapp.com/en/search.rdf?utf8=%E2%9C%93&t=labeling-skos-base&qt=begins_with&q=wasser&for=all&c=&l%5B%5D=de&l%5B%5D=en";
 
@@ -200,13 +197,7 @@ public class SNSClient {
     }*/
     
     public synchronized Resource getTerm(String termId, String lang, FilterType type) {
-    	if (FilterType.ONLY_TERMS == type)
-    		return getTermByUri(this.fUrlThesaurus.toString(), termId, lang);
-    	else if (FilterType.ONLY_LOCATIONS == type)
-    		return getTermByUri(this.fUrlGazetteer.toString(), termId, lang);
-    	else if (FilterType.ONLY_EVENTS == type)
-    		return getTermByUri(this.fUrlChronicle.toString(), termId, lang);
-    	return null;
+   		return getTermByUri(getUrlByFilter(type), termId, lang);
     }
     
     public synchronized Resource getTermByUri(String uri, String termId, String lang) {
@@ -313,20 +304,20 @@ public class SNSClient {
      * @return A topic map fragment.
      * @throws Exception
      */
-    public synchronized Resource autoClassifyToUrl(String url, int analyzeMaxWords, String filter,
-            boolean ignoreCase, String lang) throws Exception {
+    public synchronized Resource autoClassifyToUrl(String url, FilterType type, String lang) throws Exception {
         if (url == null) {
             throw new IllegalArgumentException("Url can not be null");
         }
-        if (analyzeMaxWords < 0) {
+        /*if (analyzeMaxWords < 0) {
             throw new IllegalArgumentException("AnalyzeMaxWords can not be lower than 0");
-        }
+        }*/
 
         Model model = ModelFactory.createDefaultModel();
 
     	//http://iqvoc-chronicle.innoq.com/de/search.html?t=note-base&qt=contains&q=Bundesregierung&c=&l%5B%5D=de&date_min=1976-08-31&date_max=1976-08-31&commit=Suche
-        String params = "autoclassify.rdf?uri=" + url;
-        String query = this.fUrlThesaurus.toString() + params;
+        String params = "/autoclassify/extract.rdf?uri=" + url;
+        
+        String query = getUrlByFilter(type) + lang + params;
 
         try {
         	// read the RDF/XML file
@@ -368,7 +359,18 @@ public class SNSClient {
         return this.fXtmSoapPortType.autoClassifyOp(classifyRequest);*/
     }
 
-    /**
+    private String getUrlByFilter(FilterType type) {
+		if (type == FilterType.ONLY_TERMS)
+			return this.fUrlThesaurus.toString();
+		else if (type == FilterType.ONLY_LOCATIONS)
+			return this.fUrlGazetteer.toString();
+		else if (type == FilterType.ONLY_EVENTS)
+			return this.fUrlChronicle.toString();
+		
+		return null;
+	}
+
+	/**
      * Search the environment chronicles bases on findTopicslimits his however on the event types and extends the search
      * conditions by a time range or date.
      * @param searchType
@@ -439,7 +441,7 @@ public class SNSClient {
      * conditions by a time range or date.
      * @param searchType
      *            Can be one of the provided <code>SearchType</code>s.
-     * @param inCollection
+     * @param inCollections
      *            Can be one of the provided <code>FieldsType</code>s.
      * @param offset
      *            Defines the number of topics to skip.
@@ -469,8 +471,10 @@ public class SNSClient {
     	Model model = ModelFactory.createDefaultModel();
     	
     	//http://iqvoc-chronicle.innoq.com/de/search.html?t=note-base&qt=contains&q=Bundesregierung&c=&l%5B%5D=de&date_min=1976-08-31&date_max=1976-08-31&commit=Suche
+    	String collParams = "".equals(inCollection) ? "" : "&c=" + inCollection;
+    	
     	String params = "?t=note-base&qt="+searchType+"&q=" + queryParam + "&date_min=" + from + 
-    			"&date_max=" + to + "&c=" + inCollection + "&l[]=" + "de";
+    			"&date_max=" + to + collParams + "&l[]=" + "de";
         String query = this.fUrlChronicle.toString() + "search.rdf" + params;
 
         try {

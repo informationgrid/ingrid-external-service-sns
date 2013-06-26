@@ -31,10 +31,11 @@ public class FullClassifyTest extends TestCase {
 		// Problems fetching portalu ??????
 //		URL url = new URL ("http://www.portalu.de");			
 //		URL url = new URL ("http://www.wemove.com");
-		URL url = new URL ("http://www.spiegel.de");
+		URL url = new URL ("http://www.spiegel.de/");
 		int analyzeMaxWords = 500;
 		boolean ignoreCase = true;
 		Locale locale = Locale.GERMAN;
+		// TODO: remove analyzeMaxWords AND ignoreCase
 		result = fullClassifyService.autoClassifyURL(url, analyzeMaxWords, ignoreCase, null, locale);
 		checkFullClassifyResult(result, url);
 		assertTrue(result.getTerms().size() > 0);
@@ -77,6 +78,7 @@ public class FullClassifyTest extends TestCase {
 		int analyzeMaxWords = 100;
 		boolean ignoreCase = true;
 		Locale locale = Locale.GERMAN;
+		// TODO: remove analyzeMaxWords AND ignoreCase
 		result = fullClassifyService.autoClassifyText(text, analyzeMaxWords, ignoreCase, null, locale);
 		checkFullClassifyResult(result);
 		assertEquals(12, result.getTerms().size());
