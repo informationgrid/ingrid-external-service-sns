@@ -139,63 +139,8 @@ public class SNSClient {
         }
         
         return model.getResource(query);
-    	
-        /*
-        FindTopics topicRequest = new FindTopics();
-        topicRequest.setUser(this.fUserName);
-        topicRequest.setPassword(this.fPassword);
-        topicRequest.setLang(lang);
-        topicRequest.setPath(path);
-        topicRequest.setSearchType(searchType);
-        topicRequest.setFields(fieldsType);
-        topicRequest.setOffset(BigInteger.valueOf(offset));
-        topicRequest.setPageSize(BigInteger.valueOf(pageSize));
-        topicRequest.setQueryTerm(queryTerm);
-        if (includeUse) {
-            topicRequest.setIncludeUse("true");
-        } else {
-            topicRequest.setIncludeUse("false");
-        }
-
-        return this.fXtmSoapPortType.findTopicsOp(topicRequest);*/
     }
 
-    /**
-     * Sends a getPSI request by using the underlying webservice client. All parameters will passed to the _getPSI
-     * request object.
-     * 
-     * @param topicID
-     *            Current topic ID.
-     * @param distance
-     *            The distance-Parameter isn't used. Source: Interface-Spec. version 0.6.
-     * @param filter
-     *            Define filter for limit to a topic.
-     * @return The response object.
-     * @throws Exception
-     */
-    /*
-    public synchronized Resource getPSI(String topicID, int distance, String filter) throws Exception {
-        if (topicID == null) {
-            throw new IllegalArgumentException("TopicID can not be null");
-        }
-        if (distance < 0 || distance > 3) {
-            throw new IllegalArgumentException("Distance must have a value between 0 and 3");
-        }
-
-        GetPSI psiRequest = new GetPSI();
-        psiRequest.setUser(this.fUserName);
-        psiRequest.setPassword(this.fPassword);
-        // The distance-Parameter isn't used. Source: Interface-Spec. version 0.6.
-        psiRequest.setDistance(BigInteger.valueOf(distance));
-        psiRequest.setId(topicID);
-        if (null != filter) {
-            psiRequest.setFilter(filter);
-        }
-
-        return this.fXtmSoapPortType.getPSIOp(psiRequest);
-    	return null;
-    }*/
-    
     public synchronized Resource getTerm(String termId, String lang, FilterType type) {
    		return getTermByUri(getUrlByFilter(type), termId, lang);
     }
@@ -264,26 +209,6 @@ public class SNSClient {
         }
 
         
-        
-        /*
-        AutoClassify classifyRequest = new AutoClassify();
-        classifyRequest.setUser(this.fUserName);
-        classifyRequest.setPassword(this.fPassword);
-        if (lang != null) {
-            classifyRequest.setLang(lang);
-        }
-        classifyRequest.setDocument(document);
-        classifyRequest.setAnalyzeMaxWords("" + analyzeMaxWords);
-        if (ignoreCase) {
-            classifyRequest.setIgnoreCase("true");
-        } else {
-            classifyRequest.setIgnoreCase("false");
-        }
-        if (null != filter) {
-            classifyRequest.setFilter(filter);
-        }
-
-        return this.fXtmSoapPortType.autoClassifyOp(classifyRequest);*/
         return null;
     }
 
@@ -336,27 +261,6 @@ public class SNSClient {
         }
         
         return model.getResource(query);
-        
-        
-        /*
-        AutoClassify classifyRequest = new AutoClassify();
-        classifyRequest.setUser(this.fUserName);
-        classifyRequest.setPassword(this.fPassword);
-        if (lang != null) {
-            classifyRequest.setLang(lang);
-        }
-        classifyRequest.setUrl(url);
-        classifyRequest.setAnalyzeMaxWords("" + analyzeMaxWords);
-        if (ignoreCase) {
-            classifyRequest.setIgnoreCase("true");
-        } else {
-            classifyRequest.setIgnoreCase("false");
-        }
-        if (null != filter) {
-            classifyRequest.setFilter(filter);
-        }
-
-        return this.fXtmSoapPortType.autoClassifyOp(classifyRequest);*/
     }
 
     private String getUrlByFilter(FilterType type) {
@@ -400,40 +304,6 @@ public class SNSClient {
             throws RemoteException {
     	
     	return findEvents(queryParam, searchType, fieldsType, offset, at, at, lang, length);
-    	
-        /*if (log.isDebugEnabled()) {
-            log.debug("findEvents: term=" + query + ", ignoreCase=" + ignoreCase +
-            		", atDate=" + at +
-            		", searchType=" + searchType + ", eventPath= " + pathArray +
-            		", lang=" + lang);
-        }
-
-        FindEvents findEvents = new FindEvents();
-        findEvents.setUser(this.fUserName);
-        findEvents.setPassword(this.fPassword);
-        findEvents.setQueryTerm(query);
-
-        if (ignoreCase) {
-            findEvents.setIgnoreCase("true");
-        } else {
-            findEvents.setIgnoreCase("false");
-        }
-        findEvents.setSearchType(searchType);
-        findEvents.setLang(lang);
-        findEvents.setPath(pathArray);
-        // no fields type when looking for events !
-        // from manual: "Falls mit path=/event gesucht wird, wird ohne Übergabe von fields auch
-        // die Ereignisbeschreibung (description) durchsucht."
-        //findEvents.setFields(fieldsType);
-        findEvents.setOffset(BigInteger.valueOf(offset));
-        findEvents.setPageSize(BigInteger.valueOf(length));
-        // from manual: "Wird gar keine Zeitangabe übergeben, werden die anderen Suchbedingungen ohne 
-        // zeitliche Einschränkung ausgewertet."
-        if (at != null) {
-            findEvents.setAt(at);        	
-        }
-
-        return this.fXtmSoapPortType.findEventsOp(findEvents);*/
     }
 
     /**
@@ -494,42 +364,6 @@ public class SNSClient {
         }
         
         return model.getResource(query);
-    	
-        /*if (log.isDebugEnabled()) {
-            log.debug("findEvents: term=" + query + ", ignoreCase=" + ignoreCase +
-            		", fromDate=" + from + ", toDate=" + to +
-            		", searchType=" + searchType + ", eventPath= " + pathArray +
-            		", lang=" + lang);
-        }
-
-        FindEvents findEvents = new FindEvents();
-        findEvents.setUser(this.fUserName);
-        findEvents.setPassword(this.fPassword);
-        findEvents.setQueryTerm(query);
-        if (ignoreCase) {
-            findEvents.setIgnoreCase("true");
-        } else {
-            findEvents.setIgnoreCase("false");
-        }
-        findEvents.setSearchType(searchType);
-        findEvents.setLang(lang);
-        findEvents.setPath(pathArray);
-        // no fields type when looking for events !
-        // from manual: "Falls mit path=/event gesucht wird, wird ohne Übergabe von fields auch
-        // die Ereignisbeschreibung (description) durchsucht."
-        // findEvents.setFields(fieldsType);
-        findEvents.setOffset(BigInteger.valueOf(offset));
-        findEvents.setPageSize(BigInteger.valueOf(length));
-        // from manual: "Wird gar keine Zeitangabe übergeben, werden die anderen Suchbedingungen ohne 
-        // zeitliche Einschränkung ausgewertet."
-        if (from != null) {
-            findEvents.setFrom(from);        	
-        }
-        if (to != null) {
-            findEvents.setTo(to);        	
-        }
-
-        return this.fXtmSoapPortType.findEventsOp(findEvents);*/
     }
 
     /**
@@ -608,18 +442,6 @@ public class SNSClient {
     	String doc = root.substring(root.lastIndexOf("/")+1);
         Model hierarchy = model.read(uri.substring(0, pos) + "/"+lang+"/hierarchy/" + doc + ".rdf" + params);
 		return hierarchy.getResource(uri+doc);
-    	
-        /*GetHierarchy hierarchy = new GetHierarchy();
-        hierarchy.setAssociation(association);
-        hierarchy.setDepth(BigInteger.valueOf(depth));
-        hierarchy.setDirection(direction);
-        hierarchy.setIncludeSiblings(Boolean.valueOf(includeSiblings));
-        hierarchy.setLang(lang);
-        hierarchy.setRoot(root);
-        hierarchy.setUser(this.fUserName);
-        hierarchy.setPassword(this.fPassword);
-
-        return this.fXtmSoapPortType.getHierarchyOp(hierarchy);*/
     }
 
     /**
@@ -637,6 +459,10 @@ public class SNSClient {
      * @throws RemoteException
      */
     public synchronized Resource getSimilarTerms(boolean ignoreCase, String[] terms, String lang) {
+    	
+    	if ((null == terms) || (terms.length < 1)) {
+            throw new IllegalArgumentException("No terms set.");
+        }
     	
     	// create an empty model
         Model model = ModelFactory.createDefaultModel();
@@ -666,23 +492,6 @@ public class SNSClient {
         }
         
         return model.getResource(query + "#top");
-    	
-        /*if ((null == terms) || (terms.length < 1)) {
-            throw new IllegalArgumentException("No terms set.");
-        }
-
-        GetSimilarTerms getSimilarTerms = new GetSimilarTerms();
-        getSimilarTerms.setUser(this.fUserName);
-        getSimilarTerms.setPassword(this.fPassword);
-        getSimilarTerms.setLang(lang);
-        if (ignoreCase) {
-            getSimilarTerms.setIgnoreCase("true");
-        } else {
-            getSimilarTerms.setIgnoreCase("false");
-        }
-        getSimilarTerms.setTerm(terms);
-
-        return this.fXtmSoapPortType.getSimilarTermsOp(getSimilarTerms);*/
     }
 
     /**

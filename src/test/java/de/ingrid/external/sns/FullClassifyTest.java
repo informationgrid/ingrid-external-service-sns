@@ -32,6 +32,8 @@ public class FullClassifyTest extends TestCase {
 //		URL url = new URL ("http://www.portalu.de");			
 //		URL url = new URL ("http://www.wemove.com");
 		URL url = new URL ("http://www.spiegel.de/");
+//		URL url = new URL ("http://antezeta.com/");
+//		URL url = new URL ("http://www.heise.de/");
 		int analyzeMaxWords = 500;
 		boolean ignoreCase = true;
 		Locale locale = Locale.GERMAN;
@@ -129,7 +131,7 @@ public class FullClassifyTest extends TestCase {
 		assertTrue(indexedDoc.getDescription().length() > 0);
 		assertEquals(expectedUrl, indexedDoc.getURL());
 		assertNotNull(indexedDoc.getLang());
-		assertTrue(indexedDoc.getTimeAt() != null ||
-				(indexedDoc.getTimeFrom() != null && indexedDoc.getTimeTo() != null));
+		//assertTrue(indexedDoc.getTimeAt() != null ||
+		//		(indexedDoc.getTimeFrom() != null && indexedDoc.getTimeTo() != null));
 	}
 }

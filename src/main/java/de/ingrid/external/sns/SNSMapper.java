@@ -1,10 +1,12 @@
 package de.ingrid.external.sns;
 
+import java.net.URL;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.MissingResourceException;
 import java.util.ResourceBundle;
 
@@ -41,7 +43,7 @@ import de.ingrid.external.om.impl.TreeTermImpl;
  */
 public class SNSMapper {
 
-    /** Direction of a hierarchy operation for mapping of results */
+	/** Direction of a hierarchy operation for mapping of results */
     public enum HierarchyDirection { DOWN, UP }
 
 	private final static Logger log = Logger.getLogger(SNSMapper.class);
@@ -51,12 +53,12 @@ public class SNSMapper {
 	private static SNSMapper myInstance;
 
     // Settings
-    private ResourceBundle resourceBundle; 
+    //private ResourceBundle resourceBundle; 
 	private String SNS_NATIVE_KEY_PREFIX;
 	private ResourceBundle resourceMapper;
 
     /** The three main SNS topic types */
-    private enum TopicType {EVENT, LOCATION, THESA}
+    //private enum TopicType {EVENT, LOCATION, THESA}
 
 
 	/** Get The Singleton */
@@ -68,7 +70,7 @@ public class SNSMapper {
 	}
 
 	private SNSMapper(ResourceBundle resourceBundle) {
-		this.resourceBundle = resourceBundle;
+		//this.resourceBundle = resourceBundle;
 		this.resourceMapper = ResourceBundle.getBundle("mapping");
     	SNS_NATIVE_KEY_PREFIX = resourceBundle.getString("sns.nativeKeyPrefix");
 	}
@@ -186,6 +188,7 @@ public class SNSMapper {
     	if (typeId != null) {
     		outLocation.setTypeId(typeId);
     		String id = typeId.substring(typeId.lastIndexOf('/')+1);
+
     		try {
     			String typeName = resourceMapper.getString("gazetteer."+langFilter+"."+id);
     			outLocation.setTypeName(typeName);
@@ -198,7 +201,8 @@ public class SNSMapper {
     	// TODO: determine native key like "06412000" in 
     	// <skos:notation rdf:datatype="http://iqvoc-gazetteer.innoq.com/agsNotation" xml:lang="none">06412000</skos:notation>
         // <skos:notation rdf:datatype="http://iqvoc-gazetteer.innoq.com/rsNotation" xml:lang="none">064120000000</skos:notation>
-    	//outLocation.setNativeKey();
+    	
+    	outLocation.setNativeKey(RDFUtils.getNativeKey(topic, SNS_NATIVE_KEY_PREFIX));
     	
     	// check for bounding box
     	// TODO: what if more than one bounding box?
@@ -210,6 +214,9 @@ public class SNSMapper {
 	    	else if (points.length == 4)
 	    		outLocation.setBoundingBox(points[0], points[1], points[2], points[3]);
     	}
+    	
+    	if (outLocation.getQualifier() == null)
+    		outLocation.setQualifier(outLocation.getTypeName());
     	
     	// ALSO EXPIRED IF REQUESTED !
     	if (checkExpired) {
@@ -323,7 +330,7 @@ public class SNSMapper {
     		// if GEMET, then the title is used for the title in SNSTopic and, in case UMTHES is different
     		// the UMTHES value is stored in alternateTitle
     		outTerm.setAlternateName(outTerm.getName());
-    		//outTerm.setName(getGemetName(inTopic));
+    		//TODO outTerm.setName(getGemetName(inTopic));
     		outTerm.setAlternateId(getGemetId(gemet));
     	}
 
@@ -700,7 +707,7 @@ public class SNSMapper {
     public FullClassifyResult mapToFullClassifyResult(Resource resThesaurus, Resource resGazetteer, Resource resChronical, String langFilter) {
     	FullClassifyResultImpl result = new FullClassifyResultImpl();
     	
-    	result.setIndexedDocument(mapToIndexedDocument(resThesaurus));
+    	//result.setIndexedDocument(mapToIndexedDocument(resThesaurus));
     	result.setLocations(mapToLocationsFromResults(resGazetteer, true, langFilter));
     	result.setTerms(mapToTerms(resThesaurus, null, langFilter));
     	result.setEvents(mapToEvents(resChronical, langFilter));
@@ -712,135 +719,30 @@ public class SNSMapper {
      * @param inDoc result of fullClassify as delivered by SNS
      * @return the IndexedDocument NEVER NULL
      */
-    private IndexedDocument mapToIndexedDocument(Resource inDoc) {
+    public IndexedDocument mapToIndexedDocument(String inDoc, URL url) {
     	IndexedDocumentImpl result = new IndexedDocumentImpl();
 
-    	// TODO: implement
+    	result.setClassifyTimeStamp(new Date());
+    	result.setTitle(HtmlUtils.getHtmlTagContent(inDoc, "title"));
+    	result.setDescription(HtmlUtils.getHtmlMetaTagContent(inDoc, "description"));
+    	result.setURL(url);
+    	
+    	String lang = HtmlUtils.getHtmlDocLanguage(inDoc);
+		try {
+        	result.setLang(new Locale(lang));	
+		} catch (Exception e) {
+	    	log.warn("Error mapping Lang: " + lang, e);
+	    	result.setLang(new Locale("de"));
+		}
     	/*
-    	result.setClassifyTimeStamp(inDoc.getTimestamp());
-    	result.setTitle(inDoc.getTitle());
-    	result.setDescription(inDoc.get_abstract());
-    	if (inDoc.getUri() != null) {
-    		try {
-            	result.setURL(new URL(inDoc.getUri()));
-    		} catch (Exception e) {
-    	    	log.warn("Error mapping URI: " + inDoc.getUri(), e);
-    		}
-    	}
-    	if (inDoc.getLang() != null) {
-    		try {
-            	result.setLang(new Locale(inDoc.getLang()));    			
-    		} catch (Exception e) {
-    	    	log.warn("Error mapping Lang: " + inDoc.getLang(), e);
-    		}
-    	}
 
     	result.setTimeAt(convertToDate(inDoc.getAt()));
     	result.setTimeFrom(convertToDate(inDoc.getFrom()));
-    	result.setTimeTo(convertToDate(inDoc.getTo()));*/
-
+    	result.setTimeTo(convertToDate(inDoc.getTo()));
+    	 */
     	return result;
     }
-
-	/** Get topics from fragment
-	 * @param mapFragment sns result
-	 * @return the topics OR NULL
-	 */
-    /*
-	public Topic[] getTopics(TopicMapFragment mapFragment) {
-		Topic[] topics = null;
-	    if (null != mapFragment) {
-	    	topics = mapFragment.getTopicMap().getTopic();
-	    }
-	    return topics;
-	}
-	*/
-	
-    /** Return topic with given id from topic list.
-     * @param topics list of topics
-     * @param topicId id of topic to extract from list
-     * @param removeExpired if true checks whether topic is expired and returns null if so !
-     * @return the found topic or NULL if topic not found or is expired (if requested)
-     */
-    /*
-    private Topic getTopicById(Topic[] topics, String topicId, boolean removeExpired) {
-    	// determine topic from topic list
-        for (Topic topic : topics) {
-            if (topicId.equals(topic.getId())) {
-            	// topic found, check expired if requested
-            	if (!removeExpired || !isExpired(topic)) {
-                	return topic;
-            	}
-            }
-        }
-
-        return null;
-    }
-    */
-
-	/** Get associations from fragment
-	 * @param mapFragment sns result
-	 * @return the associations OR NULL
-	 *//*
-	private Association[] getAssociations(TopicMapFragment mapFragment) {
-		Association[] associations = null;
-	    if (null != mapFragment) {
-	    	associations = mapFragment.getTopicMap().getAssociation();
-	    }
-	    return associations;
-	}
-	
-    private TopicType getTopicType(Topic topic) {
-		String instance = topic.getInstanceOf()[0].getTopicRef().getHref();
-//		log.debug("InstanceOf: "+instance);
-		if (instance.indexOf("topTermType") != -1 || instance.indexOf("nodeLabelType") != -1
-		 || instance.indexOf("descriptorType") != -1 || instance.indexOf("nonDescriptorType") != -1) {
-			return TopicType.THESA;
-
-		} else if (instance.indexOf("activityType") != -1 || instance.indexOf("anniversaryType") != -1
-				 || instance.indexOf("conferenceType") != -1 || instance.indexOf("disasterType") != -1
-				 || instance.indexOf("historicalType") != -1 || instance.indexOf("interYearType") != -1
-				 || instance.indexOf("legalType") != -1 || instance.indexOf("observationType") != -1
-				 || instance.indexOf("natureOfTheYearType") != -1 || instance.indexOf("publicationType") != -1) {
-			return TopicType.EVENT;
-
-		} else { // if instance.indexOf("nationType") != -1 || ...
-			return TopicType.LOCATION;
-		}
-    }
-
-    private String getTopicTitle(Topic topic, String langFilter) {
-        BaseName[] baseNames = topic.getBaseName();
-        // Set a default if for the selected language nothing exists.
-        String title = baseNames[0].getBaseNameString().get_value();
-        for (int i = 0; i < baseNames.length; i++) {
-            final Scope scope = baseNames[i].getScope();
-            if (scope != null) {
-                final String href = scope.getTopicRef()[0].getHref();
-                if (href.endsWith('#' + langFilter)) {
-                    title = baseNames[i].getBaseNameString().get_value();
-                    break;
-                }
-            }
-        }
-        
-        return title;
-    }
-
-    private Occurrence getOccurrence(Topic topic, String occurrenceType) {
-    	Occurrence result = null;
-    	
-    	if (null != topic.getOccurrence()) {
-	    	for (Occurrence occ: topic.getOccurrence()) {
-	    		if (occ.getInstanceOf().getTopicRef().getHref().endsWith(occurrenceType)) {
-	    			result = occ;
-	    		}
-	    	}
-    	}
-
-    	return result;
-    }
-*/
+    
     private TermType getTermType(Resource r) {
     	String nodeType = "descriptorType";
 

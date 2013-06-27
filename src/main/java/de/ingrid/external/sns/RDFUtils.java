@@ -17,6 +17,9 @@ public class RDFUtils {
     public static String getName(Resource res, String lang) {
 		RDFNode node = getObject(res, "skos", "prefLabel", lang);
 		if (node == null) node = getObject(res, "skos", "officialName", lang);
+		// for autoclassify results
+		if (node == null) node = getObject(res, "dct", "title");
+		
         if (node != null) {
             return node.asNode().getLiteralValue().toString();
         }
@@ -242,6 +245,16 @@ public class RDFUtils {
 		RDFNode node = getObject(res, "schema", "expires");
 		if (node != null) {
 			return node.asNode().getLiteralValue().toString();
+		}
+		return null;
+	}
+
+	public static String getNativeKey(Resource topic, String keyPrefix) {
+		StmtIterator notations = getObjects(topic, "skos", "notation");
+		while (notations.hasNext()) {
+			Statement stmt = notations.next();
+			if (stmt.getLiteral().getDatatypeURI().contains(keyPrefix))
+				return stmt.getLiteral().getLexicalForm();
 		}
 		return null;
 	}

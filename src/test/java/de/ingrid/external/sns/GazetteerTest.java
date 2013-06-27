@@ -31,20 +31,19 @@ public class GazetteerTest extends TestCase {
 		locations = gazetteerService.getRelatedLocationsFromLocation(locationId, true, locale);
 		assertEquals(6, locations.length);
 		checkLocation(locations[0], locationId, "Gro\u00DFer Buchberg");
-		// TODO: related locations do not include labels!
-		/*for (Location loc : locations) {
+		for (Location loc : locations) {
 			checkLocation(loc);			
 			assertFalse(loc.getIsExpired());
-		}*/
+		}
 
 		// valid location in german, DO NOT INCLUDE fromLocation
 		locations = gazetteerService.getRelatedLocationsFromLocation(locationId, false, locale);
 		assertEquals(5, locations.length);
-		/*for (Location loc : locations) {
+		for (Location loc : locations) {
 			assertTrue(!locationId.equals(loc.getId()));
 			checkLocation(loc);			
 			assertFalse(loc.getIsExpired());
-		}*/
+		}
 
 		// TODO: in english ?
 		locale = Locale.ENGLISH;
@@ -56,11 +55,11 @@ public class GazetteerTest extends TestCase {
 		locale = Locale.GERMAN;
 		locations = gazetteerService.getRelatedLocationsFromLocation(locationId, true, locale);
 		assertEquals(1, locations.length);
-		/*for (Location loc : locations) {
+		for (Location loc : locations) {
 			checkLocation(loc);
 			assertFalse("GEMEINDE0325300005".equals(loc.getId()));
 			assertFalse(loc.getIsExpired());
-		}*/
+		}
 
 		// valid location in german
 		locationId = "http://iqvoc-gazetteer.innoq.com/NATURPARK31";
@@ -117,7 +116,7 @@ public class GazetteerTest extends TestCase {
 		checkLocation(location, locationId, "Frankfurt am Main");
 		assertEquals("Gemeinde", location.getTypeName());
 		// TODO: assertEquals("Stadt", location.getQualifier());
-		// TODO: assertEquals("06412000", location.getNativeKey());
+		assertEquals("06412000", location.getNativeKey());
 		assertNotNull(location.getBoundingBox());
 		assertFalse(location.getIsExpired());
 
@@ -191,28 +190,41 @@ public class GazetteerTest extends TestCase {
 			assertTrue(location.getName().toLowerCase().contains(queryTerm));
 		}
 
+		// only administrative locations, CONTAINS
+		locations = gazetteerService.findLocationsFromQueryTerm(queryTerm,
+				QueryType.ONLY_ADMINISTRATIVE_LOCATIONS, MatchingType.CONTAINS,
+				locale);
+		assertEquals(12, locations.length);
+		for (Location location : locations) {
+			checkLocation(location, null, null);
+			assertTrue(location.getName().toLowerCase().contains(queryTerm));
+			assertTrue(location.getTypeId().contains("-admin-"));
+			//assertNotNull(location.getNativeKey());
+			assertNotNull(location.getBoundingBox());
+		}
+
 		// only administrative locations, BEGINS_WITH
 		locations = gazetteerService.findLocationsFromQueryTerm(queryTerm,
 				QueryType.ONLY_ADMINISTRATIVE_LOCATIONS, MatchingType.BEGINS_WITH,
 				locale);
-		assertEquals(7, locations.length);
+		assertEquals(6, locations.length);
 		for (Location location : locations) {
 			checkLocation(location, null, null);
 			assertTrue(location.getName().toLowerCase().contains(queryTerm));
+			assertTrue(location.getTypeId().contains("-admin-"));
 			//assertNotNull(location.getNativeKey());
-			//TODO: bounding box not received during search
-			//assertNotNull(location.getBoundingBox());
+			assertNotNull(location.getBoundingBox());
 		}
-
+		
 		// english results
 		queryTerm = "frankfurt";
 		// TODO: locale = Locale.ENGLISH;
-/*
+
 		// all locations
 		locations = gazetteerService.findLocationsFromQueryTerm(queryTerm,
 				QueryType.ALL_LOCATIONS, MatchingType.BEGINS_WITH,
 				locale);
-		assertEquals(5, locations.length);
+		assertEquals(4, locations.length);
 		for (Location location : locations) {
 			checkLocation(location, null, null);
 			assertTrue(location.getName().toLowerCase().contains(queryTerm));
@@ -220,7 +232,7 @@ public class GazetteerTest extends TestCase {
 
 		// only administrative locations
 		locations = gazetteerService.findLocationsFromQueryTerm(queryTerm,
-				QueryType.ONLY_ADMINISTRATIVE_LOCATIONS, MatchingType.EXACT,
+				QueryType.ONLY_ADMINISTRATIVE_LOCATIONS, MatchingType.BEGINS_WITH,
 				locale);
 		assertEquals(4, locations.length);
 		for (Location location : locations) {
@@ -229,7 +241,7 @@ public class GazetteerTest extends TestCase {
 			assertNotNull(location.getNativeKey());
 			assertNotNull(location.getBoundingBox());
 		}
-		*/
+		
 	}
 
 	private void checkLocation(Location location) {
