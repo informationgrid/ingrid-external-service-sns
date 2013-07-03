@@ -24,5 +24,13 @@ public class HtmlUtils {
         if (m.find() == true) return m.group(1);
     	return "";
     }
+
+	public static String prepareUrl(String url) {
+		int pos = url.lastIndexOf('/');
+		if (pos != url.length()) {
+			return url + "/";
+		}
+		return url;
+	}
 }
 

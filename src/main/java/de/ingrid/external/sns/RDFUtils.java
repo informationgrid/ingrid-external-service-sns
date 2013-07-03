@@ -259,4 +259,12 @@ public class RDFUtils {
 		return null;
 	}
 
+	public static int getTotalResults(Model model) {
+		RDFNode node = getObject(model, "sdc", "totalResults");
+		if (node != null) {
+			return Integer.valueOf(node.asNode().getLiteralValue().toString());
+		}
+		return 0;
+	}
+
 }

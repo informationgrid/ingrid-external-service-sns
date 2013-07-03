@@ -79,10 +79,18 @@ public class SNSClientTest extends TestCase {
 	public void testGetEventTerm() throws RemoteException {
 		// Deutsche Ereignisse
 		Locale lang = new Locale("de");
-		Event[] events = chronicalService.findEventsFromQueryTerm("wasser", de.ingrid.external.ChronicleService.MatchingType.CONTAINS, null, null, null, lang);
+		Event[] events = chronicalService.findEventsFromQueryTerm("wasser", de.ingrid.external.ChronicleService.MatchingType.CONTAINS, null, null, null, lang, 0, 10);
 		assertTrue(events.length > 0);
-		for (Event event : events) {
-			checkEvent(event);
+		for (int i = 0; i < 10; i++) {
+			checkEvent(events[i]);
+		}
+		
+		lang = new Locale("de");
+		Event[] events2 = chronicalService.findEventsFromQueryTerm("wasser", de.ingrid.external.ChronicleService.MatchingType.CONTAINS, null, null, null, lang, 1, 10);
+		assertTrue(events2.length > 0);
+		for (int i = 0; i < 10; i++) {
+			checkEvent(events2[i]);
+			assertTrue(events[i].getId() != events2[i].getId());
 		}
 		
 		events = chronicalService.getAnniversaries("10.10.1978", lang);

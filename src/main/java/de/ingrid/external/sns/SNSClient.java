@@ -29,6 +29,10 @@ import de.ingrid.external.FullClassifyService.FilterType;
 public class SNSClient {
 
 	private final static Logger log = Logger.getLogger(SNSClient.class);	
+	
+	public static final int NUM_SEARCH_RESULTS = 40;
+
+	public static final int PAGE_START = 1;
 
     private String fUserName;
 
@@ -101,9 +105,13 @@ public class SNSClient {
      * @see FieldsType
      */
     public synchronized Resource findTopics(String queryTerm, FilterType type, String searchType,
+    		String fieldsType, long offset, long pageSize, String lang, boolean includeUse) throws Exception {
+    	return findTopics(null, queryTerm, type, searchType, fieldsType, offset, pageSize, lang, includeUse);
+    }
+    
+    public synchronized Resource findTopics(String url, String queryTerm, FilterType type, String searchType,
             String fieldsType, long offset, long pageSize, String lang, boolean includeUse) throws Exception {
     	
-    	//try.iqvoc.net/search?t=labeling skos base&qt=exact&q=dance&for=concept&c=indoors&l=en
     	if (queryTerm == null) {
             throw new IllegalArgumentException("QueryTerm can not be null");
         }
@@ -118,10 +126,9 @@ public class SNSClient {
         queryTerm = URLEncoder.encode(queryTerm, "utf8");
         String params = "t=labeling-skosxl-base&qt="+searchType+"&q=" + queryTerm + "&l[]=" + lang + "&page=" + offset;
         
-       	query = getUrlByFilter(type) + "search.rdf?" + params;
+        String host = (url == null) ? getUrlByFilter(type) : HtmlUtils.prepareUrl(url);
+       	query = host + "search.rdf?" + params;
         
-        // String query = "http://boden-params.herokuapp.com/en/search.rdf?utf8=%E2%9C%93&t=labeling-skos-base&qt=begins_with&q=wasser&for=all&c=&l%5B%5D=de&l%5B%5D=en";
-
         try {
         	// read the RDF/XML file
         	model.read(query);
@@ -199,7 +206,7 @@ public class SNSClient {
      * @return A topic map fragment.
      * @throws Exception
      */
-    public synchronized Resource autoClassify(String document, int analyzeMaxWords, String filter,
+    public synchronized Resource[] autoClassify(String document, int analyzeMaxWords, FilterType filter,
             boolean ignoreCase, String lang) throws Exception {
         if (document == null) {
             throw new IllegalArgumentException("document can not be null");
@@ -208,6 +215,8 @@ public class SNSClient {
             throw new IllegalArgumentException("AnalyzeMaxWords can not be lower than 0");
         }
 
+        // TODO: implement autoClassify!
+        
         
         return null;
     }
@@ -233,15 +242,10 @@ public class SNSClient {
         if (url == null) {
             throw new IllegalArgumentException("Url can not be null");
         }
-        /*if (analyzeMaxWords < 0) {
-            throw new IllegalArgumentException("AnalyzeMaxWords can not be lower than 0");
-        }*/
 
         Model model = ModelFactory.createDefaultModel();
 
-    	//http://iqvoc-chronicle.innoq.com/de/search.html?t=note-base&qt=contains&q=Bundesregierung&c=&l%5B%5D=de&date_min=1976-08-31&date_max=1976-08-31&commit=Suche
         String params = "/autoclassify/extract.rdf?uri=" + url;
-        
         String query = getUrlByFilter(type) + lang + params;
 
         try {
@@ -337,14 +341,11 @@ public class SNSClient {
             long offset, String from, String to, String lang, int length)
             throws RemoteException {
     	
-    	
     	Model model = ModelFactory.createDefaultModel();
     	
-    	//http://iqvoc-chronicle.innoq.com/de/search.html?t=note-base&qt=contains&q=Bundesregierung&c=&l%5B%5D=de&date_min=1976-08-31&date_max=1976-08-31&commit=Suche
     	String collParams = "".equals(inCollection) ? "" : "&c=" + inCollection;
-    	
     	String params = "?t=note-base&qt="+searchType+"&q=" + queryParam + "&date_min=" + from + 
-    			"&date_max=" + to + collParams + "&l[]=" + "de";
+    			"&date_max=" + to + collParams + "&l[]=" + "de" + "&page="+offset;
         String query = this.fUrlChronicle.toString() + "search.rdf" + params;
 
         try {
@@ -375,8 +376,6 @@ public class SNSClient {
      * @throws RemoteException
      */
     public synchronized Resource anniversary(String date, String lang) throws RemoteException {
-    	// http://iqvoc-chronicle.innoq.com/de/anniversary?date=2013-05-01
-    	
     	// create an empty model
         Model model = ModelFactory.createDefaultModel();
 
@@ -430,8 +429,10 @@ public class SNSClient {
     	
     	int pos;
     	String uri = url.toString();
+
     	// extract identifier from url to search for it via hierarchy-api
 		pos = uri.indexOf(url.getHost()) + url.getHost().length();
+		String host = uri.substring(0, pos) + "/";
     	
     	// create an empty model
         Model model = ModelFactory.createDefaultModel();
@@ -440,8 +441,8 @@ public class SNSClient {
     	if (includeSiblings) params += "&siblings="+includeSiblings;
     	
     	String doc = root.substring(root.lastIndexOf("/")+1);
-        Model hierarchy = model.read(uri.substring(0, pos) + "/"+lang+"/hierarchy/" + doc + ".rdf" + params);
-		return hierarchy.getResource(uri+doc);
+        Model hierarchy = model.read(host+lang+"/hierarchy/" + doc + ".rdf" + params);
+		return hierarchy.getResource(host+doc);
     }
 
     /**

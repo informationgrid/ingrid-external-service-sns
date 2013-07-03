@@ -92,6 +92,8 @@ public class GazetteerTest extends TestCase {
 		location = gazetteerService.getLocation(locationId, locale);
 		checkLocation(location, locationId, "Gro\u00DFer Buchberg");
 		assertEquals("Berg", location.getTypeName());
+		assertEquals(50.152817f, location.getBoundingBox()[0]);
+		assertEquals(9.051591f, location.getBoundingBox()[1]);
 		assertFalse(location.getIsExpired());
 
 		// in english ?  SAME NAME because locale ignored by SNS, id determines language !
@@ -118,6 +120,10 @@ public class GazetteerTest extends TestCase {
 		// TODO: assertEquals("Stadt", location.getQualifier());
 		assertEquals("06412000", location.getNativeKey());
 		assertNotNull(location.getBoundingBox());
+		assertEquals(8.4673764f, location.getBoundingBox()[0]);
+		assertEquals(50.013846f, location.getBoundingBox()[1]);
+		assertEquals(8.8057514f, location.getBoundingBox()[2]);
+		assertEquals(50.227580f, location.getBoundingBox()[3]);
 		assertFalse(location.getIsExpired());
 
 		// EXPIRED LOCATION !
@@ -184,7 +190,7 @@ public class GazetteerTest extends TestCase {
 		locations = gazetteerService.findLocationsFromQueryTerm(queryTerm,
 				QueryType.ALL_LOCATIONS, MatchingType.CONTAINS,
 				locale);
-		assertEquals(14, locations.length);
+		assertEquals(13, locations.length);
 		for (Location location : locations) {
 			checkLocation(location, null, null);
 			assertTrue(location.getName().toLowerCase().contains(queryTerm));
@@ -194,7 +200,7 @@ public class GazetteerTest extends TestCase {
 		locations = gazetteerService.findLocationsFromQueryTerm(queryTerm,
 				QueryType.ONLY_ADMINISTRATIVE_LOCATIONS, MatchingType.CONTAINS,
 				locale);
-		assertEquals(12, locations.length);
+		assertEquals(11, locations.length);
 		for (Location location : locations) {
 			checkLocation(location, null, null);
 			assertTrue(location.getName().toLowerCase().contains(queryTerm));
@@ -214,6 +220,16 @@ public class GazetteerTest extends TestCase {
 			assertTrue(location.getTypeId().contains("-admin-"));
 			//assertNotNull(location.getNativeKey());
 			assertNotNull(location.getBoundingBox());
+		}
+		
+		
+		// expired locations must be removed!
+		queryTerm = "Dessau";
+		locations = gazetteerService.findLocationsFromQueryTerm(queryTerm,
+				QueryType.ALL_LOCATIONS, MatchingType.CONTAINS, locale);
+		//assertEquals(2, locations.length);
+		for (Location location : locations) {
+			assertFalse(location.getIsExpired());
 		}
 		
 		// english results

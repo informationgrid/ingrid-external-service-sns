@@ -223,7 +223,7 @@ public class ThesaurusTest extends TestCase {
 		// TOP TERMS in german
 		String termId = null;
 		Locale locale = Locale.GERMAN;
-/*		treeTerms = thesaurusService.getHierarchyNextLevel(termId, locale);
+		treeTerms = thesaurusService.getHierarchyNextLevel(termId, locale);
 		assertTrue(treeTerms.length > 0);
 		for (TreeTerm treeTerm : treeTerms) {
 			// all top terms have null as parents and do have children !
@@ -232,10 +232,31 @@ public class ThesaurusTest extends TestCase {
 		}
 
 		// in english ? NO RESULTS only german supported by SNS ! 
-		locale = Locale.ENGLISH;
+/*		locale = Locale.ENGLISH;
 		treeTerms = thesaurusService.getHierarchyNextLevel(termId, locale);
 		assertTrue(treeTerms.length > 0);
 */
+		
+		// Top terms from explicit Url
+		termId = null; // TOP
+		locale = Locale.GERMAN;
+		treeTerms = thesaurusService.getHierarchyNextLevel("http://umthes.innoq.com/", termId, locale);
+		assertTrue(treeTerms.length > 0);
+		for (TreeTerm treeTerm : treeTerms) {
+			// all top terms have null as parents and do have children !
+			assertNull(treeTerm.getParents());
+			checkTreeTerm(treeTerm, false, true);
+		}
+		
+		TreeTerm[] treeTermsForeign = thesaurusService.getHierarchyNextLevel("http://boden-params.herokuapp.com/", termId, locale);
+		assertTrue(treeTermsForeign.length > 0);
+		assertTrue(treeTerms[0].getId() != treeTermsForeign[0].getId());
+		for (TreeTerm treeTerm : treeTermsForeign) {
+			// all top terms have null as parents and do have children !
+			assertNull(treeTerm.getParents());
+			checkTreeTerm(treeTerm, false, true);
+		}
+				
 		// SUB TERMS of top term
 		termId = "http://umthes.innoq.com/_00049251"; // Atmosphäre und Klima
 		locale = Locale.GERMAN;
@@ -254,13 +275,13 @@ public class ThesaurusTest extends TestCase {
 		assertNotNull(treeTerms);
 		assertTrue(treeTerms.length == 0);
 
-/*
+
 		// INVALID term, SNS throws Exception !
 		termId = "wrong id";
 		treeTerms = thesaurusService.getHierarchyNextLevel(termId, locale);
 		assertNotNull(treeTerms);
 		assertTrue(treeTerms.length == 0);
-*/
+
 	}
 
 	public final void testGetHierarchyPathToTop() {
