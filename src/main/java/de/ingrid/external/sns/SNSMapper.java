@@ -402,6 +402,7 @@ public class SNSMapper {
 				// needed to determine that it's not a top-term!
 				TreeTerm term = new TreeTermImpl();
 				term.setId(RDFUtils.getId(termResource));
+				term.setName(RDFUtils.getName(termResource, langFilter));
 				treeTerm.addParent(term);
 				
 				resultList.add(treeTerm);
@@ -413,6 +414,7 @@ public class SNSMapper {
 					Statement node = it.next();
 					TreeTerm subChild = new TreeTermImpl();
 					subChild.setId(RDFUtils.getId(node.getResource()));
+					subChild.setId(RDFUtils.getName(node.getResource(), langFilter));
 					treeTerm.addChild(subChild);
 				}
 			}
@@ -423,22 +425,34 @@ public class SNSMapper {
 			term.setName(RDFUtils.getName(termResource, langFilter));
 			term.setType(Term.TermType.DESCRIPTOR);
 			resultList.add(term);
-			RDFNode parent = RDFUtils.getParent(termResource);
-			while (parent != null) {
-				TreeTerm parentTerm = new TreeTermImpl();
-				parentTerm.setId(RDFUtils.getId(parent.asResource()));
-				parentTerm.setName(RDFUtils.getName(parent.asResource(), langFilter));
-				parentTerm.setType(Term.TermType.DESCRIPTOR);
-				parentTerm.addChild(term);
-				term.addParent(parentTerm);
-				
-				parent = RDFUtils.getParent(termResource.getModel().getResource(parentTerm.getId()));
-				term = parentTerm;
-			}
-    		
+			getAllParentsFrom(term, termResource, langFilter);
     	}
 		return resultList;
     }
+    
+    private TreeTerm[] getAllParentsFrom(TreeTerm term, Resource res, String lang) {
+    	List<TreeTerm> terms = new ArrayList<TreeTerm>();
+    	
+    	StmtIterator parents = RDFUtils.getParents(res);
+    	while (parents.hasNext()) {
+    		Statement parent = parents.next();
+    		TreeTerm parentTerm = new TreeTermImpl();
+    		parentTerm.setId(RDFUtils.getId(parent.getResource()));
+    		parentTerm.setName(RDFUtils.getName(parent.getResource(), lang));
+    		parentTerm.setType(Term.TermType.DESCRIPTOR);
+    		parentTerm.addChild(term);
+    		Resource grandParentRes = parent.getModel().getResource(parentTerm.getId());
+    		// recursive call!
+    		getAllParentsFrom(parentTerm, grandParentRes, lang);
+    		/*for (TreeTerm grandParent : grandParents) {
+				parentTerm.addParent(grandParent);
+			}*/
+    		term.addParent(parentTerm);
+    		terms.add(parentTerm);    		
+    	}
+		return terms.toArray(new TreeTerm[terms.size()]);
+    }
+    
 
     /** Creates an Event list from the given topics.<br/>
      * @param topics sns topics representing events
