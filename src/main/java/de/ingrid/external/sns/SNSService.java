@@ -102,8 +102,11 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 			}
 	    	
 	    	// NOTICE: includes location with passed id to the beginning!
-	    	if (includeFrom)
-	    		resultList.add(0, snsMapper.mapToLocation(topic, new LocationImpl(), langFilter));
+	    	if (includeFrom) {
+	    		Location fromLocation = snsMapper.mapToLocation(topic, new LocationImpl(), langFilter);
+	    		if (!fromLocation.getIsExpired())
+	    			resultList.add(0, fromLocation);
+	    	}
 	
 	    	if (log.isDebugEnabled()) {
 	    		log.debug("return locations.size: " + resultList.size());
@@ -275,7 +278,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 	
 	@Override
 	public TreeTerm getHierarchyPathToTop(String url, String termId, Locale language) {
-		long depth = 0; // fetches till top
+		long depth = SNSClient.MAX_HIERARCHY_DEPTH; // fetch maximum available
 		HierarchyDirection direction = HierarchyDirection.UP;
 		boolean includeSiblings = false;
     	String langFilter = getSNSLanguageFilter(language);
@@ -290,14 +293,33 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 		
     	List<TreeTerm> resultList = snsMapper.mapToTreeTerms(termId, direction, hierarchy, langFilter);
     	
-    	// TODO: get unresolved parents due to too short hierarchy?
-    	//termId = getTermWithUnknownParents(resultList);
+    	// get unresolved parents due to too short hierarchy
+    	checkForNonRootElements(resultList, hierarchy, url, language);
 
     	if (log.isDebugEnabled()) {
     		log.debug("return startTerm: " + resultList.get(0));
     	}
 
 	    return resultList.get(0);
+	}
+
+	/**
+	 * This method checks all parent elements who have no further parent element if they are top elements.
+	 * If not then the hierarchy is fetched from the last parent and the getHierarchyPathToTop is called.
+	 */
+	private void checkForNonRootElements(List<TreeTerm> resultList, Resource hierarchy, String url, Locale language) {
+		for (TreeTerm treeTerm : resultList) {
+			Resource parentRes = hierarchy.getModel().getResource(treeTerm.getId());
+			if (treeTerm.getParents() != null) {
+				checkForNonRootElements(treeTerm.getParents(), hierarchy, url, language);
+			}else if (treeTerm.getParents() == null && !RDFUtils.isTopConcept(parentRes)) {
+				List<TreeTerm> parents = getHierarchyPathToTop(url, treeTerm.getId(), language).getParents();
+				for (TreeTerm parent : parents) {
+					treeTerm.addParent(parent);					
+				}
+			}
+		}
+		
 	}
 
 	@Override

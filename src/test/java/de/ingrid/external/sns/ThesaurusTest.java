@@ -294,7 +294,7 @@ public class ThesaurusTest extends TestCase {
 		// start term is term with requested id
 		assertEquals(termId, startTerm.getId());
 		// has 1 parent
-		assertTrue(startTerm.getParents().size() == 1);
+		assertTrue(startTerm.getParents().size() == 2);
 		// all parents have further parent and also start term as child
 		for (TreeTerm parentTerm : startTerm.getParents()) {
 			checkTreeTerm(parentTerm, true, true);
@@ -313,7 +313,7 @@ public class ThesaurusTest extends TestCase {
 		startTerm = thesaurusService.getHierarchyPathToTop(termId, locale);
 		// start term is term with requested id
 		assertEquals(termId, startTerm.getId());
-		String[] expectedPath = {"Organo-Ton", "Bentonit", "Ton [Mineral]", "Sedimentgestein", "Gestein"};
+		String[] expectedPath = {"Organo-Ton", "Bentonit", "Ton [Mineral]", "Sedimentgestein", "Gestein", "Mineral", "[Produkte, Materialien, Werkstoffe]"};
 		TreeTerm currentTerm = startTerm;
 		for (String expectedParent : expectedPath) {
 			assertNotNull("No further parent element when was expected: " + expectedParent, currentTerm);

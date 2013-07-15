@@ -444,9 +444,6 @@ public class SNSMapper {
     		Resource grandParentRes = parent.getModel().getResource(parentTerm.getId());
     		// recursive call!
     		getAllParentsFrom(parentTerm, grandParentRes, lang);
-    		/*for (TreeTerm grandParent : grandParents) {
-				parentTerm.addParent(grandParent);
-			}*/
     		term.addParent(parentTerm);
     		terms.add(parentTerm);    		
     	}

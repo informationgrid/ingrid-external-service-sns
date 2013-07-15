@@ -56,6 +56,9 @@ public class RDFUtils {
 	public static ResIterator getTopConceptsOf(Model model) {
 		return getResources(model, "skos", "topConceptOf");
 	}
+	public static boolean isTopConcept(Resource res) {
+		return getObject(res, "skos", "topConceptOf") != null;
+	}
     
     public static RDFNode getParent(Model model) {
         return getObject(model, "skos", "broader");

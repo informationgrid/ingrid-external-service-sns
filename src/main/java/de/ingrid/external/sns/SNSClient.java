@@ -30,6 +30,8 @@ public class SNSClient {
 
 	private final static Logger log = Logger.getLogger(SNSClient.class);	
 	
+	public static final int MAX_HIERARCHY_DEPTH = 4;
+	
 	public static final int NUM_SEARCH_RESULTS = 40;
 
 	public static final int PAGE_START = 1;

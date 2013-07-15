@@ -51,13 +51,13 @@ public class GazetteerTest extends TestCase {
 		//assertTrue(locations.length > 0);
 
 		// EXPIRED !!!! INCLUDE fromLocation ! BUT IS REMOVED BECAUSE EXPIRED !!!!
-		locationId = "http://iqvoc-gazetteer.innoq.com/GEMEINDE0325300005"; // Gehrden
+		locationId = "http://iqvoc-gazetteer.innoq.com/GEMEINDE1515107014"; // Gehrden
 		locale = Locale.GERMAN;
 		locations = gazetteerService.getRelatedLocationsFromLocation(locationId, true, locale);
-		assertEquals(1, locations.length);
+		assertEquals(6, locations.length);
 		for (Location loc : locations) {
 			checkLocation(loc);
-			assertFalse("GEMEINDE0325300005".equals(loc.getId()));
+			assertFalse("http://iqvoc-gazetteer.innoq.com/GEMEINDE0325300005".equals(loc.getId()));
 			assertFalse(loc.getIsExpired());
 		}
 
@@ -131,6 +131,7 @@ public class GazetteerTest extends TestCase {
 		location = gazetteerService.getLocation(locationId, locale);
 		checkLocation(location, locationId, "Dessau");
 		assertTrue(location.getIsExpired());
+		// TODO: successor is "Dessau-Roßlau"!
 
 		// INVALID location
 		locationId = "http://iqvoc-gazetteer.innoq.com/wrong-id";
