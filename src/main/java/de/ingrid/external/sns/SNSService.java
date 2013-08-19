@@ -78,6 +78,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 	public Location[] getRelatedLocationsFromLocation(String locationId, 
 			boolean includeFrom, Locale language) {
     	String langFilter = getSNSLanguageFilter(language);
+    	String excludedTerms = "";
 
     	if (log.isDebugEnabled()) {
     		log.debug("getRelatedLocationsFromLocation(): " + locationId + " includeFrom=" + includeFrom + " " + langFilter);
@@ -99,6 +100,8 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 				Location loc = snsMapper.mapToLocation(locationRes, new LocationImpl(), langFilter);
 				if (!loc.getIsExpired())
 					resultList.add(loc);
+				else
+				    excludedTerms += loc.getId() + ",";
 			}
 	    	
 	    	// NOTICE: includes location with passed id to the beginning!
@@ -109,7 +112,8 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 	    	}
 	
 	    	if (log.isDebugEnabled()) {
-	    		log.debug("return locations.size: " + resultList.size());
+	    	    int excludedLength = excludedTerms.isEmpty() ? 0 : excludedTerms.split(",").length;
+	    		log.debug("return locations.size: " + resultList.size() + " (excluded: " + excludedLength + " => " + excludedTerms + ")");
 	    	}
 	
 		    return resultList.toArray(new Location[resultList.size()]);
@@ -152,8 +156,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     			analyzeMaxWords, FilterType.ONLY_LOCATIONS, ignoreCase, langFilter);
 
     	boolean checkExpired = true;
-    	// TODO: check mapping
-    	List<Location> resultList = snsMapper.mapToLocationsFromResults(res[0], checkExpired, langFilter);
+    	List<Location> resultList = snsMapper.mapToLocationsFromResults(res[1], checkExpired, langFilter);
 
     	if (log.isDebugEnabled()) {
     		log.debug("return locations.size: " + resultList.size());
@@ -443,8 +446,8 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     		log.debug("autoClassifyText(): maxWords=" + analyzeMaxWords + " ignoreCase=" + ignoreCase + " " + langFilter);
     	}
     	
-		Resource[] mapFragment = snsAutoClassifyText(text, analyzeMaxWords, filter, ignoreCase, langFilter);
-		FullClassifyResult result = snsMapper.mapToFullClassifyResult(mapFragment[0], mapFragment[1], mapFragment[2], langFilter);
+		Resource[] resources = snsAutoClassifyText(text, analyzeMaxWords, filter, ignoreCase, langFilter);
+		FullClassifyResult result = snsMapper.mapToFullClassifyResult(resources[0], resources[1], resources[2], langFilter);
 
     	if (log.isDebugEnabled()) {
     		int numTerms = result.getTerms() != null ? result.getTerms().size() : 0;
@@ -477,15 +480,20 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 	
 	/** Call SNS autoClassify. Map passed params to according SNS params. */
     private Resource[] snsAutoClassifyText(String text,
-    		int analyzeMaxWords, FilterType filterType, boolean ignoreCase, String langFilter) {
-    	Resource[] res = null;
+    		int analyzeMaxWords, FilterType filter, boolean ignoreCase, String langFilter) {
+    	Resource[] resources = new Resource[3];
     	try {
-    		res = snsClient.autoClassify(text, analyzeMaxWords, filterType, ignoreCase, langFilter);
+    	    if (filter == null || filter == FilterType.ONLY_TERMS)
+                resources[0] = snsClient.autoClassify(text, analyzeMaxWords, FilterType.ONLY_TERMS, ignoreCase, langFilter);
+            if (filter == null || filter == FilterType.ONLY_LOCATIONS)
+                resources[1] = snsClient.autoClassify(text, analyzeMaxWords, FilterType.ONLY_LOCATIONS, ignoreCase, langFilter);
+            if (filter == null || filter == FilterType.ONLY_EVENTS)
+                resources[2] = snsClient.autoClassify(text, analyzeMaxWords, FilterType.ONLY_EVENTS, ignoreCase, langFilter);
     	} catch (Exception e) {
-	    	log.error("Error calling snsClient.autoClassify", e);
+	    	log.error("Error calling snsClient.autoClassify for text", e);
     	}
     	
-    	return res;
+    	return resources;
     }
 
 	/**

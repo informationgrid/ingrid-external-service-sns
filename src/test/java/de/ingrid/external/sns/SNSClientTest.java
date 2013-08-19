@@ -52,16 +52,16 @@ public class SNSClientTest extends TestCase {
         assertEquals(40, RDFUtils.getResults(eventsRes).toList().size());
         
         eventsRes = snsClient.findEvents("wasser", "contains", null, 
-        		0, "1976-08-31", "de", 10);
+        		0, "1976-07-22", "de", 10);
         assertNotNull(eventsRes);
-        assertEquals(40, RDFUtils.getResults(eventsRes).toList().size());
+        assertEquals(1, RDFUtils.getResults(eventsRes).toList().size());
     }
     
     public void testFindEventsFromTo() throws Exception {
         Resource eventsRes = snsClient.findEvents("wasser", "contains", null, 
-        		0, "1976-08-31", "1978-08-31", "de", 10);
+        		0, "1972-07-22", "1980-07-22", "de", 10);
         assertNotNull(eventsRes);
-        assertEquals(40, RDFUtils.getResults(eventsRes).toList().size());
+        assertEquals(5, RDFUtils.getResults(eventsRes).toList().size());
     }
 
 	public void testAnniversary() throws RemoteException {
@@ -113,6 +113,7 @@ public class SNSClientTest extends TestCase {
 		assertEquals(Date.valueOf("2010-10-05"), e.getTimeAt());
 		assertEquals(Date.valueOf("2010-10-05"), e.getTimeRangeFrom());
 		assertEquals(Date.valueOf("2010-10-05"), e.getTimeRangeTo());
+		assertEquals("activity", e.getTypeId());
 		assertEquals("http://iqvoc-chronicle.innoq.com/t2a639eb3_12b99052384_-37ba", e.getId());
 		assertEquals(2, e.getLinks().size());
 	}

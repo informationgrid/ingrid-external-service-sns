@@ -5,6 +5,9 @@
  */
 package de.ingrid.external.sns;
 
+import java.io.FileNotFoundException;
+import java.io.OutputStreamWriter;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.rmi.RemoteException;
@@ -178,9 +181,10 @@ public class SNSClient {
         }
 
         // write it to standard out
-        if (log.isDebugEnabled()) {
+        // throws error!
+        /*if (log.isDebugEnabled()) {
             model.write(System.out);
-        }
+        }*/
         
         return model.getResource(termId);
     }
@@ -199,7 +203,7 @@ public class SNSClient {
      *            The text to analyze.
      * @param analyzeMaxWords
      *            The maximal number of words to analyze for a document.
-     * @param filter
+     * @param type
      *            Define filter for limit to a topic.
      * @param ignoreCase
      *            Set to true ignore capitalization of the document.
@@ -208,7 +212,7 @@ public class SNSClient {
      * @return A topic map fragment.
      * @throws Exception
      */
-    public synchronized Resource[] autoClassify(String document, int analyzeMaxWords, FilterType filter,
+    public synchronized Resource autoClassify(String document, int analyzeMaxWords, FilterType type,
             boolean ignoreCase, String lang) throws Exception {
         if (document == null) {
             throw new IllegalArgumentException("document can not be null");
@@ -217,10 +221,37 @@ public class SNSClient {
             throw new IllegalArgumentException("AnalyzeMaxWords can not be lower than 0");
         }
 
-        // TODO: implement autoClassify!
+        // open a connection to the target url
+        String query = getUrlByFilter(type) + lang + "/autoclassify/plain.rdf";
+        URL url = new URL(query);
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();           
+        connection.setDoOutput(true); 
+        connection.setInstanceFollowRedirects(false); 
+        connection.setRequestMethod("POST"); 
+        connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded"); 
+        connection.setRequestProperty("charset", "utf-8");
+        connection.connect();
         
+        // send the document data to analyze
+        OutputStreamWriter writer = new OutputStreamWriter(connection.getOutputStream());
+        String content = "content=" + document;
+        writer.write(content);
+        writer.flush();
         
-        return null;
+        // read the response into the model
+        Model model = ModelFactory.createDefaultModel();
+        try {
+            model.read(connection.getInputStream(), null);
+        } catch (FileNotFoundException e) {
+            log.warn("The autoClassify-Service for type: " + type + " seems not to be available: " + e.getMessage());
+            return null;
+        }
+        
+        if (log.isDebugEnabled()) {
+            model.write(System.out);
+        }
+        
+        return model.getResource(query);
     }
 
     /**
@@ -345,6 +376,9 @@ public class SNSClient {
     	
     	Model model = ModelFactory.createDefaultModel();
     	
+    	if (from == null) from = "";
+    	if (to   == null) to   = "";
+    	
     	String collParams = "".equals(inCollection) ? "" : "&c=" + inCollection;
     	String params = "?t=note-base&qt="+searchType+"&q=" + queryParam + "&date_min=" + from + 
     			"&date_max=" + to + collParams + "&l[]=" + "de" + "&page="+offset;
@@ -395,9 +429,10 @@ public class SNSClient {
         }
 
         // write it to standard out
-        if (log.isDebugEnabled()) {
+        // throws error!
+        /*if (log.isDebugEnabled()) {
             model.write(System.out);
-        }
+        }*/
         
         return model.getResource(query);
     }
