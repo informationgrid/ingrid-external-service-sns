@@ -129,7 +129,7 @@ public class SNSClient {
         String query = null;
         // encode parameter
         queryTerm = URLEncoder.encode(queryTerm, "utf8");
-        String params = "t=labeling-skosxl-base&qt="+searchType+"&q=" + queryTerm + "&l[]=" + lang + "&page=" + offset;
+        String params = "t=labels&qt="+searchType+"&q=" + queryTerm + "&l[]=" + lang + "&page=" + offset;
         
         String host = (url == null) ? getUrlByFilter(type) : HtmlUtils.prepareUrl(url);
        	query = host + "search.rdf?" + params;
@@ -380,7 +380,7 @@ public class SNSClient {
     	if (to   == null) to   = "";
     	
     	String collParams = "".equals(inCollection) ? "" : "&c=" + inCollection;
-    	String params = "?t=note-base&qt="+searchType+"&q=" + queryParam + "&date_min=" + from + 
+    	String params = "?t=notes&qt="+searchType+"&q=" + queryParam + "&date_min=" + from + 
     			"&date_max=" + to + collParams + "&l[]=" + "de" + "&page="+offset;
         String query = this.fUrlChronicle.toString() + "search.rdf" + params;
 

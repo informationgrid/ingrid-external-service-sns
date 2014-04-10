@@ -172,8 +172,8 @@ public class SNSMapper {
     	// check for type name/id
     	String typeId = RDFUtils.getMemberOf(topic);
     	if (typeId != null) {
-    		outLocation.setTypeId(typeId);
     		String id = typeId.substring(typeId.lastIndexOf('/')+1);
+    		outLocation.setTypeId(id);
 
     		try {
     			String typeName = resourceMapper.getString("gazetteer."+langFilter+"."+id);

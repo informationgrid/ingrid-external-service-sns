@@ -16,6 +16,7 @@ public class RDFUtils {
     
     public static String getName(Resource res, String lang) {
 		RDFNode node = getObject(res, "skos", "prefLabel", lang);
+		if (node == null) node = getObject(res, "skosxl", "prefLabel", lang);
 		if (node == null) node = getObject(res, "skos", "officialName", lang);
 		// for autoclassify results
 		if (node == null) node = getObject(res, "dct", "title");
