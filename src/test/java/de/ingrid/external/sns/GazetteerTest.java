@@ -261,6 +261,14 @@ public class GazetteerTest extends TestCase {
 		}
 		
 	}
+	
+	public final void testGetSuccessorFromExpired() {
+        Location location = gazetteerService.getLocation( "http://iqvoc-gazetteer.innoq.com/GEMEINDE1510100000", new Locale("de") );
+        assertTrue( location.getIsExpired() );
+        assertEquals( "2012-11-28", location.getExpiredDate() );
+        assertEquals( 1, location.getSuccessorIds().length );
+        assertEquals( "http://iqvoc-gazetteer.innoq.com/_4e9d66f0-1b80-0130-d0e8-482a1437a069", location.getSuccessorIds()[0] );
+	}
 
 	private void checkLocation(Location location) {
 		checkLocation(location, null, null);

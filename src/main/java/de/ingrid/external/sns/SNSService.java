@@ -185,6 +185,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     	while (it.hasNext()) {
 			RDFNode node = it.next();
 			Resource locationRes = snsClient.getTerm(RDFUtils.getId(node.asResource()), langFilter, type);
+			if (locationRes == null) continue;
 			Location loc = snsMapper.mapToLocation(locationRes, new LocationImpl(), langFilter);
 			
 			// exclude administrative locations if wanted!

@@ -202,7 +202,11 @@ public class SNSMapper {
     	// ALSO EXPIRED IF REQUESTED !
     	if (checkExpired) {
     		outLocation.setIsExpired(isExpired(topic));
+    		outLocation.setExpiredDate(RDFUtils.getExpireDate(topic));
     	}
+    	
+    	// check if successor exists
+    	outLocation.setSuccessorIds( RDFUtils.getSuccessors(topic));
     	
     	return outLocation;
     }

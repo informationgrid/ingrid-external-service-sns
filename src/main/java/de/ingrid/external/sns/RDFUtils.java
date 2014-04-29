@@ -271,4 +271,15 @@ public class RDFUtils {
 		return 0;
 	}
 
+    public static String[] getSuccessors( Resource topic ) {
+        StmtIterator successors = getObjects( topic, "gn", "successor" );
+        List<String> succList = new ArrayList<String>();
+        while (successors.hasNext()) {
+            Statement successor = successors.next();
+            succList.add( successor.getObject().asNode().getURI() );
+        }
+        
+        return succList.toArray(new String[0]);
+    }
+
 }
