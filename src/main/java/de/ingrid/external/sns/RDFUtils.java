@@ -3,6 +3,7 @@ package de.ingrid.external.sns;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.hp.hpl.jena.rdf.model.LiteralRequiredException;
 import com.hp.hpl.jena.rdf.model.Model;
 import com.hp.hpl.jena.rdf.model.NodeIterator;
 import com.hp.hpl.jena.rdf.model.Property;
@@ -94,8 +95,12 @@ public class RDFUtils {
         StmtIterator stmts = res.listProperties(prop);
         while (stmts.hasNext()) {
         	Statement stmt = stmts.next();
-        	if (stmt.getLanguage().equals(lang)) {
-        		return stmt.getObject();
+        	try {
+        	    if (stmt.getLanguage().equals(lang)) {
+        	        return stmt.getObject();
+        	    }
+        	} catch (LiteralRequiredException e) {
+        	    continue;
         	}
         }
         return null;
@@ -126,10 +131,18 @@ public class RDFUtils {
 	public static List<String> getAltLabels(Resource searchResults, String lang) {
 		List<String> labels = new ArrayList<String>();
 		StmtIterator stmts = getObjects(searchResults, "skos", "altLabel");
+		if (!stmts.hasNext()) {
+		    stmts = getObjects(searchResults, "skosxl", "altLabel");		    
+		}
+		
 		while (stmts.hasNext()) {
         	Statement stmt = stmts.next();
-        	if (stmt.getLanguage().equals(lang)) {
-        		labels.add(stmt.getObject().asNode().getLiteralValue().toString());
+        	try {
+            	if (stmt.getLanguage().equals(lang)) {
+            		labels.add(stmt.getObject().asNode().getLiteralValue().toString());
+            	}
+        	} catch (LiteralRequiredException e) {
+        	    continue;
         	}
         }
 		return labels;

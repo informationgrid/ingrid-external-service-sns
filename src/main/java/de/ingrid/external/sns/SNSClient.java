@@ -133,6 +133,10 @@ public class SNSClient {
         
         String host = (url == null) ? getUrlByFilter(type) : HtmlUtils.prepareUrl(url);
        	query = host + "search.rdf?" + params;
+       	
+       	if (log.isDebugEnabled()) {
+            log.debug( "Searching by: " + query );
+        }
         
         try {
         	// read the RDF/XML file
@@ -168,6 +172,10 @@ public class SNSClient {
         int pos = termId.lastIndexOf('/')+1;
         String type = determineType(termId);
         String query = uri + lang + type + termId.substring(pos).trim() + ".rdf";
+        
+        if (log.isDebugEnabled()) {
+            log.debug( "Fetching term from: " + query );
+        }
 
         try {
         	// read the RDF/XML file
@@ -280,6 +288,10 @@ public class SNSClient {
 
         String params = "/autoclassify/extract.rdf?uri=" + url;
         String query = getUrlByFilter(type) + lang + params;
+        
+        if (log.isDebugEnabled()) {
+            log.debug( "AutoClassify by: " + query );
+        }
 
         try {
         	// read the RDF/XML file
@@ -379,10 +391,16 @@ public class SNSClient {
     	if (from == null) from = "";
     	if (to   == null) to   = "";
     	
-    	String collParams = "".equals(inCollection) ? "" : "&c=" + inCollection;
-    	String params = "?t=notes&qt="+searchType+"&q=" + queryParam + "&date_min=" + from + 
+    	String collParams = (inCollection == null || "".equals(inCollection)) ? "" : "&c=" + inCollection;
+    	// TODO: use t=notes instead of t=pref_labels to get more search results
+    	// however an error occurred when doing so (06.05.2014) 
+    	String params = "?t=pref_labels&qt="+searchType+"&q=" + queryParam + "&date_min=" + from + 
     			"&date_max=" + to + collParams + "&l=" + "de" + "&page="+offset;
         String query = this.fUrlChronicle.toString() + "search.rdf" + params;
+        
+        if (log.isDebugEnabled()) {
+            log.debug( "Searching for Events with: " + query );
+        }
 
         try {
         	// read the RDF/XML file
@@ -416,6 +434,10 @@ public class SNSClient {
         Model model = ModelFactory.createDefaultModel();
 
         String query = this.fUrlChronicle.toString() + lang + "/anniversary.rdf?date=" + date;
+        
+        if (log.isDebugEnabled()) {
+            log.debug( "Getting anniversary from: " + query );
+        }
 
         try {
         	// read the RDF/XML file
@@ -513,6 +535,10 @@ public class SNSClient {
         paramTerms = paramTerms.substring(0, paramTerms.length()-1);
         String query = this.fUrlThesaurus.toString() + lang + "/similar.rdf?terms=" + paramTerms;
 
+        if (log.isDebugEnabled()) {
+            log.debug( "Getting similar terms from: " + query );
+        }
+        
         try {
         	// read the RDF/XML file
         	model.read(query);

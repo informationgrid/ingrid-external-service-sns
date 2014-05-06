@@ -51,17 +51,17 @@ public class SNSClientTest extends TestCase {
         // TODO: result is 40 because result's numResultsPerPage is always 40
         assertEquals(40, RDFUtils.getResults(eventsRes).toList().size());
         
-        eventsRes = snsClient.findEvents("wasser", "contains", null, 
-        		0, "1976-07-22", "de", 10);
+        eventsRes = snsClient.findEvents("Hamburg", "contains", null, 
+        		0, "2011-06-27", "de", 10);
         assertNotNull(eventsRes);
-        assertEquals(1, RDFUtils.getResults(eventsRes).toList().size());
+        assertEquals(2, RDFUtils.getResults(eventsRes).toList().size());
     }
     
     public void testFindEventsFromTo() throws Exception {
-        Resource eventsRes = snsClient.findEvents("wasser", "contains", null, 
-        		0, "1972-07-22", "1980-07-22", "de", 10);
+        Resource eventsRes = snsClient.findEvents("Berlin", "contains", null, 
+        		0, "1972-07-22", "2001-07-22", "de", 10);
         assertNotNull(eventsRes);
-        assertEquals(5, RDFUtils.getResults(eventsRes).toList().size());
+        assertEquals(3, RDFUtils.getResults(eventsRes).toList().size());
     }
 
 	public void testAnniversary() throws RemoteException {
