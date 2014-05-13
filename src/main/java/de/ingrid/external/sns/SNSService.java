@@ -146,6 +146,8 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 	@Override
 	public Location[] getLocationsFromText(String text, int analyzeMaxWords,
 			boolean ignoreCase, Locale language) {
+	    FilterType type = FilterType.ONLY_LOCATIONS;
+	    List<Location> resultList = new ArrayList<Location>();
     	String langFilter = getSNSLanguageFilter(language);
 
     	if (log.isDebugEnabled()) {
@@ -153,10 +155,23 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     	}
 
     	Resource[] res = snsAutoClassifyText(text,
-    			analyzeMaxWords, FilterType.ONLY_LOCATIONS, ignoreCase, langFilter);
+    			analyzeMaxWords, type, ignoreCase, langFilter);
 
-    	boolean checkExpired = true;
-    	List<Location> resultList = snsMapper.mapToLocationsFromResults(res[1], checkExpired, langFilter);
+    	// boolean checkExpired = true;
+    	if (res[1] != null) {
+        	NodeIterator it = RDFUtils.getResults(res[1]);
+        	while (it.hasNext()) {
+                RDFNode node = it.next();
+                Resource locationRes = snsClient.getTerm(RDFUtils.getId(node.asResource()), langFilter, type);
+                if (locationRes == null) continue;
+                Location loc = snsMapper.mapToLocation(locationRes, new LocationImpl(), langFilter);
+                
+                // do not add expired locations
+                if (!loc.getIsExpired())
+                    resultList.add(loc);
+        	}
+    	}
+    	//List<Location> resultList = snsMapper.mapToLocationsFromResults(res[1], checkExpired, langFilter);
 
     	if (log.isDebugEnabled()) {
     		log.debug("return locations.size: " + resultList.size());

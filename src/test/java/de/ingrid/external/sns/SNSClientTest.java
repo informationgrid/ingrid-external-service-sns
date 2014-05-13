@@ -43,6 +43,13 @@ public class SNSClientTest extends TestCase {
 		}
 	}
 	
+	public void testFindEventsAtError() throws Exception { 
+	    //http://iqvoc-chronicle.innoq.com/t7df45747_12f9d9eeddd_-7a46
+	    // get all events by setting date to null
+        Resource eventsRes = snsClient.getTermByUri( "http://iqvoc-chronicle.innoq.com/", "http://iqvoc-chronicle.innoq.com/t7df45747_12f9d9eeddd_-7a46", "de" ); 
+        assertNotNull( eventsRes );
+	}
+	
     public void testFindEventsAt() throws Exception {
     	// get all events by setting date to null
     	Resource eventsRes = snsClient.findEvents("wasser", "contains", null, 
