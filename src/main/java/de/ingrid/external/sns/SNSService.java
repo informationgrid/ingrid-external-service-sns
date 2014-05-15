@@ -30,6 +30,7 @@ import de.ingrid.external.om.RelatedTerm;
 import de.ingrid.external.om.Term;
 import de.ingrid.external.om.Term.TermType;
 import de.ingrid.external.om.TreeTerm;
+import de.ingrid.external.om.impl.FullClassifyResultImpl;
 import de.ingrid.external.om.impl.LocationImpl;
 import de.ingrid.external.om.impl.TermImpl;
 import de.ingrid.external.sns.SNSMapper.HierarchyDirection;
@@ -440,7 +441,8 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     	}
 
 		Resource[] resources = snsAutoClassifyURL(url, filter, langFilter);
-		FullClassifyResult result = snsMapper.mapToFullClassifyResult(resources[0], resources[1], resources[2], langFilter);
+		//FullClassifyResult result = snsMapper.mapToFullClassifyResult(resources[0], resources[1], resources[2], langFilter);
+		FullClassifyResult result = convertResourcesToFullClassifyResult( resources, langFilter );
 		result.setIndexedDocument(snsMapper.mapToIndexedDocument(getHtmlContent(url), url));
 
     	if (log.isDebugEnabled()) {
@@ -463,7 +465,8 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     	}
     	
 		Resource[] resources = snsAutoClassifyText(text, analyzeMaxWords, filter, ignoreCase, langFilter);
-		FullClassifyResult result = snsMapper.mapToFullClassifyResult(resources[0], resources[1], resources[2], langFilter);
+		FullClassifyResult result = convertResourcesToFullClassifyResult( resources, langFilter );
+		
 
     	if (log.isDebugEnabled()) {
     		int numTerms = result.getTerms() != null ? result.getTerms().size() : 0;
@@ -477,6 +480,41 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 
     // ----------------------- PRIVATE -----------------------------------
 
+	
+	private FullClassifyResult convertResourcesToFullClassifyResult(Resource[] resources, String langFilter) {
+	    List<Term> terms = new ArrayList<Term>();
+        List<Location> locations = new ArrayList<Location>();
+        List<Event> events = new ArrayList<Event>();
+        for (int i=0; i<resources.length; i++) {
+            Resource resource = resources[i];
+            if (resource != null) {
+                FilterType type = null;
+                if (i == 0) type = FilterType.ONLY_TERMS;
+                else if (i == 1) type = FilterType.ONLY_LOCATIONS;
+                else if (i == 2) type = FilterType.ONLY_EVENTS;
+                NodeIterator it = RDFUtils.getResults(resource);
+                while (it.hasNext()) {
+                    RDFNode node = it.next();
+                    Resource locationRes = snsClient.getTerm(RDFUtils.getId(node.asResource()), langFilter, type);
+                    if (locationRes == null) continue;
+                    if (i == 0)
+                        terms.add( snsMapper.mapToTerm( locationRes, new TermImpl(), langFilter) );
+                    else if (i == 1)
+                        locations.add( snsMapper.mapToLocation(locationRes, new LocationImpl(), langFilter) );
+                    else if (i == 2)
+                        events.add( snsMapper.mapToEvent( locationRes, langFilter) );
+                }
+            }
+        }
+        //FullClassifyResult result = snsMapper.mapToFullClassifyResult(resources[0], resources[1], resources[2], langFilter);
+        FullClassifyResultImpl result = new FullClassifyResultImpl();
+        result.setLocations(locations);
+        result.setTerms(terms);
+        result.setEvents(events);
+        
+        return result;
+	}
+	
 	/** Call SNS findTopics. Map passed params to according SNS params. 
 	 * @param url defines the service url to search in
 	 */

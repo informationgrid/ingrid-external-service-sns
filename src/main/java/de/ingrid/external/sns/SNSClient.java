@@ -120,6 +120,9 @@ public class SNSClient {
     	if (queryTerm == null) {
             throw new IllegalArgumentException("QueryTerm can not be null");
         }
+    	if (type == null) {
+            throw new IllegalArgumentException("FilterType can not be null");
+        }
         if (offset < 0) {
             throw new IllegalArgumentException("Offset can not be lower than 0");
         }
@@ -158,6 +161,9 @@ public class SNSClient {
     }
 
     public synchronized Resource getTerm(String termId, String lang, FilterType type) {
+        if (type == null) {
+            throw new IllegalArgumentException("FilterType can not be null");
+        }
    		return getTermByUri(getUrlByFilter(type), termId, lang);
     }
     
@@ -225,6 +231,9 @@ public class SNSClient {
         if (document == null) {
             throw new IllegalArgumentException("document can not be null");
         }
+        if (type == null) {
+            throw new IllegalArgumentException("FilterType can not be null");
+        }
         if (analyzeMaxWords < 0) {
             throw new IllegalArgumentException("AnalyzeMaxWords can not be lower than 0");
         }
@@ -282,6 +291,9 @@ public class SNSClient {
     public synchronized Resource autoClassifyToUrl(String url, FilterType type, String lang) throws Exception {
         if (url == null) {
             throw new IllegalArgumentException("Url can not be null");
+        }
+        if (type == null) {
+            throw new IllegalArgumentException("FilterType can not be null");
         }
 
         Model model = ModelFactory.createDefaultModel();
@@ -394,7 +406,7 @@ public class SNSClient {
     	String collParams = (inCollection == null || "".equals(inCollection)) ? "" : "&c=" + inCollection;
     	// TODO: use t=notes instead of t=pref_labels to get more search results
     	// however an error occurred when doing so (06.05.2014) 
-    	String params = "?t=pref_labels&qt="+searchType+"&q=" + queryParam + "&date_min=" + from + 
+    	String params = "?t=notes&qt="+searchType+"&q=" + queryParam + "&date_min=" + from + 
     			"&date_max=" + to + collParams + "&l=" + "de" + "&page="+offset;
         String query = this.fUrlChronicle.toString() + "search.rdf" + params;
         
