@@ -191,9 +191,9 @@ public class SNSMapper {
     	if (points != null) {
     		// if bounding box is a coordinate then use same coordinate again
 	    	if (points.length == 2)
-	    		outLocation.setBoundingBox(points[1], points[0], points[1], points[0]);
+	    		outLocation.setBoundingBox(points[0], points[1], points[0], points[1]);
 	    	else if (points.length == 4)
-	    		outLocation.setBoundingBox(points[1], points[0], points[3], points[2]);
+	    		outLocation.setBoundingBox(points[0], points[1], points[2], points[3]);
     	}
     	
     	if (outLocation.getQualifier() == null)

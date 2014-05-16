@@ -120,10 +120,10 @@ public class GazetteerTest extends TestCase {
 		assertEquals("Gemeinde", location.getQualifier());
 		assertEquals("06412000", location.getNativeKey());
 		assertNotNull(location.getBoundingBox());
-		assertEquals(50.013846f, location.getBoundingBox()[0]);
-		assertEquals(8.4673764f, location.getBoundingBox()[1]);
-		assertEquals(50.227580f, location.getBoundingBox()[2]);
-		assertEquals(8.8057514f, location.getBoundingBox()[3]);
+		assertEquals(8.4673764f, location.getBoundingBox()[0]);
+		assertEquals(50.013846f, location.getBoundingBox()[1]);
+		assertEquals(8.8057514f, location.getBoundingBox()[2]);
+		assertEquals(50.227580f, location.getBoundingBox()[3]);
 		assertFalse(location.getIsExpired());
 
 		// EXPIRED LOCATION !
