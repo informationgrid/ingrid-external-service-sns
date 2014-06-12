@@ -332,7 +332,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 			Resource parentRes = hierarchy.getModel().getResource(treeTerm.getId());
 			if (treeTerm.getParents() != null) {
 				checkForNonRootElements(treeTerm.getParents(), hierarchy, url, language);
-			}else if (treeTerm.getParents() == null && !RDFUtils.isTopConcept(parentRes)) {
+			} else if (treeTerm.getParents() == null && !RDFUtils.isTopConcept(parentRes)) {
 				List<TreeTerm> parents = getHierarchyPathToTop(url, treeTerm.getId(), language).getParents();
 				for (TreeTerm parent : parents) {
 					treeTerm.addParent(parent);					

@@ -226,7 +226,7 @@ public class SNSMapper {
     		while (it.hasNext()) {
     			RDFNode node = it.next();
             	if (filter != null) {
-            		if (!getTermType(node.asResource()).equals(filter)) {
+            		if (!getTermType(RDFUtils.getType( node.asResource() ), false).equals(filter)) {
             			continue;
             		}
             	}
@@ -247,19 +247,17 @@ public class SNSMapper {
     	// if the term is inside a search result the id is inside a link-tag
 		outTerm.setId(RDFUtils.getId(res));
 		String name = RDFUtils.getName(res, langFilter);
-		if (name != null) {
-			outTerm.setName(name);
-			outTerm.setType(TermType.DESCRIPTOR);			
-		} else {
-			// get first alternative Label
-			List<String> altLabels = RDFUtils.getAltLabels(res, langFilter);
-			if (altLabels.size() > 0) {
-				name = altLabels.get(0);
-				outTerm.setName(name);
-			}
-			// since this is only an alternative Label we declare it as a Non-Descriptor
-			outTerm.setType(TermType.NON_DESCRIPTOR);			
+		if (name == null) {
+		    // get first alternative Label
+		    List<String> altLabels = RDFUtils.getAltLabels(res, langFilter);
+		    if (altLabels.size() > 0) {
+		        name = altLabels.get(0);
+		    }
 		}
+		outTerm.setName(name);
+
+		boolean isTopTerm = RDFUtils.isTopConcept( res );
+		outTerm.setType( getTermType( RDFUtils.getType( res ), isTopTerm ) );
 
 		//outTerm.setInspireThemes(getInspireThemes(inTopic));
 
@@ -551,20 +549,16 @@ public class SNSMapper {
     	return result;
     }
     
-    private TermType getTermType(Resource r) {
-    	String nodeType = "descriptorType";
-
-		if (nodeType.indexOf("topTermType") != -1) 
+    private TermType getTermType(String nodeType, boolean isTopTerm) {
+		/*if (isTopTerm) 
 			return TermType.NODE_LABEL;
-		else if (nodeType.indexOf("nodeLabelType") != -1) 
+		else */
+        if (nodeType.indexOf("#Label") != -1)
 			return TermType.NODE_LABEL;
-		else if (nodeType.indexOf("descriptorType") != -1) 
+		else if (nodeType.indexOf("#Concept") != -1)
 			return TermType.DESCRIPTOR;
-		// SNS 2.1
-		else if (nodeType.indexOf("nonDescriptorType") != -1 ||
-				// SNS 2.0
-				nodeType.indexOf("synonymType") != -1)
-			return TermType.NON_DESCRIPTOR;
+		else if (nodeType.indexOf("#Result") != -1)
+		    return TermType.DESCRIPTOR;
 		else
 			return TermType.NODE_LABEL;
     }

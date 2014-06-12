@@ -337,6 +337,26 @@ public class ThesaurusTest extends TestCase {
 		assertTrue(treeTerms.length == 0);
 */
 	}
+	
+	public void testHandleLabels() {
+	    String termId = "http://umthes.innoq.com/_00019331"; // has no name 
+        Locale locale = Locale.GERMAN;
+        Term startTerm = thesaurusService.getTerm(termId, locale);
+        assertNotNull( startTerm );
+        assertEquals( TermType.DESCRIPTOR, startTerm.getType() );
+        
+        termId = "http://umthes.innoq.com/Photo-de"; // is a label 
+        startTerm = thesaurusService.getTerm(termId, locale);
+        // labels should not be returned as a term!
+        assertNull( startTerm );
+        //assertEquals( TermType.NODE_LABEL, startTerm.getType() );
+        
+        termId = "http://umthes.innoq.com/_00049280"; // is a top-term 
+        startTerm = thesaurusService.getTerm(termId, locale);
+        assertNotNull( startTerm );
+        // TODO: check if it should be a NON-Descriptor actually!
+        assertEquals( TermType.DESCRIPTOR, startTerm.getType() );
+	}
 
 	private void checkTerm(Term term) {
 		checkTerm(term, null, null, null);

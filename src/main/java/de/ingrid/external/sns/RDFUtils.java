@@ -152,6 +152,14 @@ public class RDFUtils {
 		return getResources(model, "rdf", "type");
 	}
 	
+	public static String getType(Resource res) {
+	    RDFNode node = getObject(res, "rdf", "type");
+	    if (node != null) {
+            return node.asNode().getURI();
+        }
+	    return null;
+	}
+	
 	public static String getDefinition(Resource res, String lang) {
 		RDFNode node = getObject(res, "skos", "definition", lang);
         if (node != null) {
