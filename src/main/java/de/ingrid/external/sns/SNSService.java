@@ -314,14 +314,9 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     	List<TreeTerm> resultList = snsMapper.mapToTreeTerms(termId, direction, hierarchy, langFilter);
     	
     	// get unresolved parents due to too short hierarchy
-    	boolean isContained = false;
-    	for (TreeTerm treeTerm : resultList) {
-			if (treeTerm.getId().equals( termId ) ) {
-				isContained = true;
-			}
-		}
-
-    	if (!isContained) {
+    	// in case the analyzed node has no direct parents we stop here
+    	// because we cannot determine the correct top level node!
+    	if (resultList.get( 0 ).getParents() != null) {
     		checkForNonRootElements(resultList, hierarchy, url, language);    		
     	}    	
 
@@ -343,8 +338,10 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 				checkForNonRootElements(treeTerm.getParents(), hierarchy, url, language);
 			} else if (treeTerm.getParents() == null && !RDFUtils.isTopConcept(parentRes)) {
 				List<TreeTerm> parents = getHierarchyPathToTop(url, treeTerm.getId(), language).getParents();
-				for (TreeTerm parent : parents) {
-					treeTerm.addParent(parent);					
+				if (parents != null) {
+					for (TreeTerm parent : parents) {
+						treeTerm.addParent(parent);					
+					}
 				}
 			}
 		}

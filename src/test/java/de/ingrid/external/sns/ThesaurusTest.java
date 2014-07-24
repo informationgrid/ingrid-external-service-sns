@@ -338,6 +338,21 @@ public class ThesaurusTest extends TestCase {
 */
 	}
 	
+	public final void testGetHierarchyPathToTopMultipleParents() {
+		String termId = "http://umthes.innoq.com/_00101147"; // Spreewald 
+		Locale locale = Locale.GERMAN;
+		TreeTerm startTerm = thesaurusService.getHierarchyPathToTop(termId, locale);
+		// start term is term with requested id
+		assertEquals(termId, startTerm.getId());
+		String[] expectedPath = {"Spreewald", "Deutsche Biospärenreservate", "Bundesrepublik Deutschland", "Mitteleuropa", "Europa"};
+		TreeTerm currentTerm = startTerm;
+		for (String expectedParent : expectedPath) {
+			assertNotNull("No further parent element when was expected: " + expectedParent, currentTerm);
+			assertEquals(expectedParent, currentTerm.getName());
+			currentTerm = currentTerm.getParents() != null ? currentTerm.getParents().get(0) : null;
+		}
+	}
+	
 	public void testHandleLabels() {
 	    String termId = "http://umthes.innoq.com/_00019331"; // has no name 
         Locale locale = Locale.GERMAN;

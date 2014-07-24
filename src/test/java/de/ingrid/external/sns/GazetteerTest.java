@@ -92,6 +92,8 @@ public class GazetteerTest extends TestCase {
 		location = gazetteerService.getLocation(locationId, locale);
 		checkLocation(location, locationId, "Gro\u00DFer Buchberg");
 		assertEquals("Berg", location.getTypeName());
+		// TIP: if this has an error then the location is not correct from the SNS, see Ticket
+		// https://github.com/innoq/iqvoc_gazetteer/issues/14
 		assertEquals(9.051591f, location.getBoundingBox()[0]);
 		assertEquals(50.152817f, location.getBoundingBox()[1]);
 		assertFalse(location.getIsExpired());
