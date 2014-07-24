@@ -314,7 +314,16 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     	List<TreeTerm> resultList = snsMapper.mapToTreeTerms(termId, direction, hierarchy, langFilter);
     	
     	// get unresolved parents due to too short hierarchy
-    	checkForNonRootElements(resultList, hierarchy, url, language);
+    	boolean isContained = false;
+    	for (TreeTerm treeTerm : resultList) {
+			if (treeTerm.getId().equals( termId ) ) {
+				isContained = true;
+			}
+		}
+
+    	if (!isContained) {
+    		checkForNonRootElements(resultList, hierarchy, url, language);    		
+    	}    	
 
     	if (log.isDebugEnabled()) {
     		log.debug("return startTerm: " + resultList.get(0));
