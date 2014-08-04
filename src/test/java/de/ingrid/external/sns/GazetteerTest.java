@@ -274,6 +274,11 @@ public class GazetteerTest extends TestCase {
         assertEquals( 1, location.getSuccessorIds().length );
         assertEquals( "http://iqvoc-gazetteer.innoq.com/_4e9d66f0-1b80-0130-d0e8-482a1437a069", location.getSuccessorIds()[0] );
 	}
+	
+	public final void testCheckTextEncoding() {
+		Location location = gazetteerService.getLocation( "http://iqvoc-gazetteer.innoq.com/BIOSPHAERE3", new Locale("de") );
+		assertEquals( "Biosphärenreservat", location.getTypeName() );
+	}
 
 	private void checkLocation(Location location) {
 		checkLocation(location, null, null);
