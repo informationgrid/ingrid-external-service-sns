@@ -97,8 +97,10 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 	    	StmtIterator it = RDFUtils.getRelatedConcepts(topic);
 	    	while (it.hasNext()) {
 				Resource nodeRes = it.next().getResource();
-				Resource locationRes = snsClient.getTerm(RDFUtils.getId(nodeRes), langFilter, FilterType.ONLY_LOCATIONS);
-				Location loc = snsMapper.mapToLocation(locationRes, new LocationImpl(), langFilter);
+				// we expect all necessary data to be inside the result
+				// otherwise we have to query all terms separately, which takes too long
+				//Resource locationRes = snsClient.getTerm(RDFUtils.getId(nodeRes), langFilter, FilterType.ONLY_LOCATIONS);
+				Location loc = snsMapper.mapToLocation(nodeRes, new LocationImpl(), langFilter);
 				if (!loc.getIsExpired())
 					resultList.add(loc);
 				else
@@ -200,9 +202,9 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     	NodeIterator it = RDFUtils.getResults(topics);
     	while (it.hasNext()) {
 			RDFNode node = it.next();
-			Resource locationRes = snsClient.getTerm(RDFUtils.getId(node.asResource()), langFilter, type);
-			if (locationRes == null) continue;
-			Location loc = snsMapper.mapToLocation(locationRes, new LocationImpl(), langFilter);
+			//Resource locationRes = snsClient.getTerm(RDFUtils.getId(node.asResource()), langFilter, type);
+			//if (locationRes == null) continue;
+			Location loc = snsMapper.mapToLocation(node.asResource(), new LocationImpl(), langFilter);
 			
 			// exclude administrative locations if wanted!
     		if (typeOfQuery == QueryType.ONLY_ADMINISTRATIVE_LOCATIONS && !isAdministrativeLocation(loc))

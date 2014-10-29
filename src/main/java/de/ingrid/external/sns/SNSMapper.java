@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.MissingResourceException;
 import java.util.ResourceBundle;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.log4j.Logger;
 
@@ -54,6 +56,8 @@ public class SNSMapper {
     // Settings
 	private String SNS_NATIVE_KEY_PREFIX;
 	private ResourceBundle resourceMapper;
+	
+	private Pattern patternNumber = Pattern.compile("-?\\d+");
 
 
 	/** Get The Singleton */
@@ -184,7 +188,20 @@ public class SNSMapper {
     	// TODO: determine qualifier like "Stadt" in "<rdf:type rdf:resource="http://schema.org/City"/>" 
     	//outLocation.setQualifier();
     	
-    	outLocation.setNativeKey(RDFUtils.getNativeKey(topic, SNS_NATIVE_KEY_PREFIX));
+    	String nativeKey = RDFUtils.getNativeKey(topic, SNS_NATIVE_KEY_PREFIX);
+    	if ( nativeKey != null ) {
+    	    outLocation.setNativeKey( nativeKey );
+    	// otherwise if it's not "Gemeinde"
+    	} else if (!"-location-admin-use6-".equals( typeId )) {
+    	    Matcher m = patternNumber.matcher( outLocation.getId() );
+    	    String key = null;
+    	    while (m.find()) key = m.group();
+    	    outLocation.setNativeKey( key );
+    	// otherwise log a warning that there was no native key for a "Gemeinde"
+    	} else {
+    	    log.warn( "No native key could be determined for: " + topic.getURI() );
+    	}
+        // in case we didn't find a key, we use the number from the identifier
     	
     	// check for bounding box
     	float[] points = RDFUtils.getBoundingBox(topic);

@@ -153,9 +153,17 @@ public class GazetteerTest extends TestCase {
 		
 		locations = gazetteerService.getLocationsFromText(text, analyzeMaxWords, ignoreCase, locale);
 		assertTrue(locations.length > 0);
-		assertEquals( locations[0].getId(), "http://iqvoc-gazetteer.innoq.com/GEMEINDE1607103082" );
-		assertEquals( locations[0].getTypeId(), "-location-admin-use6-" );
-		assertEquals( locations[0].getNativeKey(), "16071082" );
+		Location checkLocation = null;
+		for (Location location : locations) {
+		    if ("http://iqvoc-gazetteer.innoq.com/GEMEINDE1607103082".equals( location.getId() ) ) {
+		        checkLocation = location;
+		        break;
+		    }
+        }
+		assertNotNull( checkLocation );
+		assertEquals( "http://iqvoc-gazetteer.innoq.com/GEMEINDE1607103082", checkLocation.getId() );
+		assertEquals( "-location-admin-use6-", checkLocation.getTypeId() );
+		assertEquals( "16071082", checkLocation.getNativeKey() );
 
 		// english results
 		text = "Frankfurt Main Sachsenhausen Airport";
