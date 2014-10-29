@@ -269,7 +269,9 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 		// if top terms wanted adapt parameters
 		if (termId == null) {
 			// depth 1 is enough, fetches children of top terms
-			depth = 1;
+		    // BUT we use 0 to speed up the process and assume that every root node has
+		    // at least one child
+			depth = 0;
 		}
 
     	if (log.isDebugEnabled()) {

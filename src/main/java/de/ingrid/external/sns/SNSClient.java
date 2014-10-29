@@ -508,7 +508,7 @@ public class SNSClient {
     	// create an empty model
         Model model = ModelFactory.createDefaultModel();
     	String params = "?dir=" + direction + "&siblings=" + includeSiblings;
-    	if (depth != 0) params += "&depth=" + depth; 
+    	if (depth != -1) params += "&depth=" + depth; 
     	if (includeSiblings) params += "&siblings="+includeSiblings;
     	
     	String doc = root.substring(root.lastIndexOf("/")+1);

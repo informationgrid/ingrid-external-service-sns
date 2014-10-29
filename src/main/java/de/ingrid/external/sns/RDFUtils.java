@@ -19,7 +19,7 @@ public class RDFUtils {
 		RDFNode node = getObject(res, "skos", "prefLabel", lang);
 		if (node == null) node = getObject(res, "skosxl", "prefLabel", lang);
 		if (node == null) node = getObject(res, "skos", "officialName", lang);
-		if (node == null) node = getObject(res, "gn", "officialName", lang);
+		if (node == null) node = getObject(res, "http://www.geonames.org/ontology", "officialName", lang);
 		// for autoclassify results
 		if (node == null) node = getObject(res, "dct", "title");
 		
@@ -92,6 +92,7 @@ public class RDFUtils {
     
     private static RDFNode getObject(Resource res, String namespace, String name, String lang) {
     	String nsURI = res.getModel().getNsPrefixURI(namespace);
+    	if ( nsURI == null ) nsURI = namespace;
         Property prop = res.getModel().createProperty(nsURI + name);
         StmtIterator stmts = res.listProperties(prop);
         while (stmts.hasNext()) {
