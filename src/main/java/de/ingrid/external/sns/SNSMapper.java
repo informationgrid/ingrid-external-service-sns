@@ -437,7 +437,7 @@ public class SNSMapper {
 					Statement node = it.next();
 					TreeTerm subChild = new TreeTermImpl();
 					subChild.setId(RDFUtils.getId(node.getResource()));
-					subChild.setId(RDFUtils.getName(node.getResource(), langFilter));
+					subChild.setName(RDFUtils.getName(node.getResource(), langFilter));
 					treeTerm.addChild(subChild);
 				}
 			}
