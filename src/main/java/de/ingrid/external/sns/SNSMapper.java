@@ -390,7 +390,9 @@ public class SNSMapper {
 				treeTerm.addChild(subChild);
 			}*/
 			// always add a (dummy) child and assume the root nodes have children
-			treeTerm.addChild( new TreeTermImpl() );
+			TreeTerm dummyChild = new TreeTermImpl();
+			dummyChild.setId( "dummy" );
+			treeTerm.addChild( dummyChild );
 			
 		}
 		return resultList;
