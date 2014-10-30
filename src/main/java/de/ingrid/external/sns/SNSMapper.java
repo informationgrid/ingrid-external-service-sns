@@ -371,26 +371,28 @@ public class SNSMapper {
     	
     	List<TreeTerm> resultList = new ArrayList<TreeTerm>();
     	ResIterator children = RDFUtils.getTopConceptsOf(termResource.getModel());
-			while (children.hasNext()) {
-				TreeTerm treeTerm = new TreeTermImpl();
-				RDFNode child = (RDFNode) children.next();
-				treeTerm.setId(RDFUtils.getId(child.asResource()));
-				treeTerm.setName(RDFUtils.getName(child.asResource(), langFilter));
-				treeTerm.setType(Term.TermType.DESCRIPTOR);
-				
-				resultList.add(treeTerm);
-				
-				// check for children (simple check)
-				// needed to presentation ("plus"-sign in front of node)
-				StmtIterator it = RDFUtils.getChildren(child.asResource());
-				while (it.hasNext()) {
-					Statement node = it.next();
-					TreeTerm subChild = new TreeTermImpl();
-					subChild.setId(RDFUtils.getId(node.getResource()));
-					treeTerm.addChild(subChild);
-				}
-			}
-		//}
+		while (children.hasNext()) {
+			TreeTerm treeTerm = new TreeTermImpl();
+			RDFNode child = (RDFNode) children.next();
+			treeTerm.setId(RDFUtils.getId(child.asResource()));
+			treeTerm.setName(RDFUtils.getName(child.asResource(), langFilter));
+			treeTerm.setType(Term.TermType.DESCRIPTOR);
+			
+			resultList.add(treeTerm);
+			
+			// check for children (simple check)
+			// needed to presentation ("plus"-sign in front of node)
+			/*StmtIterator it = RDFUtils.getChildren(child.asResource());
+			while (it.hasNext()) {
+				Statement node = it.next();
+				TreeTerm subChild = new TreeTermImpl();
+				subChild.setId(RDFUtils.getId(node.getResource()));
+				treeTerm.addChild(subChild);
+			}*/
+			// always add a (dummy) child and assume the root nodes have children
+			treeTerm.addChild( new TreeTermImpl() );
+			
+		}
 		return resultList;
     }
 
