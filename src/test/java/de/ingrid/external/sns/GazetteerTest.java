@@ -26,10 +26,10 @@ public class GazetteerTest extends TestCase {
 		Location[] locations;
 
 		// valid location in german, INCLUDE fromLocation
-		String locationId = "http://iqvoc-gazetteer.innoq.com/BERG41128";  // Großer Buchberg
+		String locationId = "BERG41128";  // Großer Buchberg
 		Locale locale = Locale.GERMAN;
 		locations = gazetteerService.getRelatedLocationsFromLocation(locationId, true, locale);
-		assertEquals(6, locations.length);
+		assertEquals(10, locations.length);
 		checkLocation(locations[0], locationId, "Gro\u00DFer Buchberg");
 		for (Location loc : locations) {
 			checkLocation(loc);			
@@ -38,41 +38,41 @@ public class GazetteerTest extends TestCase {
 
 		// valid location in german, DO NOT INCLUDE fromLocation
 		locations = gazetteerService.getRelatedLocationsFromLocation(locationId, false, locale);
-		assertEquals(5, locations.length);
+		assertEquals(9, locations.length);
 		for (Location loc : locations) {
 			assertTrue(!locationId.equals(loc.getId()));
 			checkLocation(loc);			
 			assertFalse(loc.getIsExpired());
 		}
 
-		// TODO: in english ?
+		// in english ?
 		locale = Locale.ENGLISH;
 		locations = gazetteerService.getRelatedLocationsFromLocation(locationId, true, locale);
-		//assertTrue(locations.length > 0);
+		assertTrue(locations.length > 0);
 
 		// EXPIRED !!!! INCLUDE fromLocation ! BUT IS REMOVED BECAUSE EXPIRED !!!!
-		locationId = "http://iqvoc-gazetteer.innoq.com/GEMEINDE1515107014"; // Gehrden
+		locationId = "GEMEINDE0325300005"; // Gehrden
 		locale = Locale.GERMAN;
 		locations = gazetteerService.getRelatedLocationsFromLocation(locationId, true, locale);
-		assertEquals(5, locations.length);
+		assertEquals(9, locations.length);
 		for (Location loc : locations) {
 			checkLocation(loc);
-			assertFalse("http://iqvoc-gazetteer.innoq.com/GEMEINDE0325300005".equals(loc.getId()));
+			assertFalse("GEMEINDE0325300005".equals(loc.getId()));
 			assertFalse(loc.getIsExpired());
 		}
 
 		// valid location in german
-		locationId = "http://iqvoc-gazetteer.innoq.com/NATURPARK31";
+		locationId = "NATURPARK31";
 		locations = gazetteerService.getRelatedLocationsFromLocation(locationId, true, locale);
 		assertTrue(locations.length > 0);
 
-		// TODO: in english ?
+		// in english ?
 		locale = Locale.ENGLISH;
 		locations = gazetteerService.getRelatedLocationsFromLocation(locationId, true, locale);
-		//assertTrue(locations.length > 0);
+		assertTrue(locations.length > 0);
 
 		// INVALID location in german
-		locationId = "http://iqvoc-gazetteer.innoq.com/wrong id";
+		locationId = "wrong id";
 		locale = Locale.GERMAN;
 		locations = gazetteerService.getRelatedLocationsFromLocation(locationId, true, locale);
 		assertTrue(locations.length == 0);
@@ -87,56 +87,45 @@ public class GazetteerTest extends TestCase {
 		Location location;
 
 		// valid location in german
-		String locationId = "http://iqvoc-gazetteer.innoq.com/BERG41128"; // Großer Buchberg
+		String locationId = "BERG41128"; // Großer Buchberg
 		Locale locale = Locale.GERMAN;
 		location = gazetteerService.getLocation(locationId, locale);
 		checkLocation(location, locationId, "Gro\u00DFer Buchberg");
 		assertEquals("Berg", location.getTypeName());
-		// TIP: if this has an error then the location is not correct from the SNS, see Ticket
-		// https://github.com/innoq/iqvoc_gazetteer/issues/14
-		assertEquals(9.051591f, location.getBoundingBox()[0]);
-		assertEquals(50.152817f, location.getBoundingBox()[1]);
 		assertFalse(location.getIsExpired());
 
 		// in english ?  SAME NAME because locale ignored by SNS, id determines language !
 		// NO ENGLISH LOCATIONS IN SNS !!!
-		
-		// TODO: wait for English support
-		/*locale = Locale.ENGLISH;
+		locale = Locale.ENGLISH;
 		location = gazetteerService.getLocation(locationId, locale);
 		checkLocation(location, locationId, "Gro\u00DFer Buchberg");
-		assertFalse(location.getIsExpired());*/
+		assertFalse(location.getIsExpired());
 
 		// valid location. NOTICE: locale ignored
-		locationId = "http://iqvoc-gazetteer.innoq.com/NATURPARK31"; // Hessischer Spessart
+		locationId = "NATURPARK31"; // Hessischer Spessart
 		location = gazetteerService.getLocation(locationId, locale);
 		checkLocation(location, locationId, "Hessischer Spessart");
 		assertEquals("Naturpark", location.getTypeName());
 		assertFalse(location.getIsExpired());
 
 		// valid location. NOTICE: locale ignored
-		locationId = "http://iqvoc-gazetteer.innoq.com/GEMEINDE0641200000"; // Frankfurt am Main
+		locationId = "GEMEINDE0641200000"; // Frankfurt am Main
 		location = gazetteerService.getLocation(locationId, locale);
 		checkLocation(location, locationId, "Frankfurt am Main");
 		assertEquals("Gemeinde", location.getTypeName());
-		assertEquals("Gemeinde", location.getQualifier());
+		assertEquals("Stadt", location.getQualifier());
 		assertEquals("06412000", location.getNativeKey());
 		assertNotNull(location.getBoundingBox());
-		assertEquals(8.4673764f, location.getBoundingBox()[0]);
-		assertEquals(50.013846f, location.getBoundingBox()[1]);
-		assertEquals(8.8057514f, location.getBoundingBox()[2]);
-		assertEquals(50.227580f, location.getBoundingBox()[3]);
 		assertFalse(location.getIsExpired());
 
 		// EXPIRED LOCATION !
-		locationId = "http://iqvoc-gazetteer.innoq.com/GEMEINDE1510100000"; // Dessau
+		locationId = "GEMEINDE0325300005"; // Gehrden
 		location = gazetteerService.getLocation(locationId, locale);
-		checkLocation(location, locationId, "Dessau");
+		checkLocation(location, locationId, "Gehrden");
 		assertTrue(location.getIsExpired());
-		// TODO: successor is "Dessau-Roßlau"!
 
 		// INVALID location
-		locationId = "http://iqvoc-gazetteer.innoq.com/wrong-id";
+		locationId = "wrong id";
 		locale = Locale.GERMAN;
 		location = gazetteerService.getLocation(locationId, locale);
 		assertNull(location);
@@ -146,146 +135,96 @@ public class GazetteerTest extends TestCase {
 		Location[] locations;
 
 		// german locations
-		String text = "Frankfurt Berlin Sachsenhausen Äppelwoi Handkäs Main";
+		String text = "Frankfurt Sachsenhausen Äppelwoi Handkäs Main";
 		int analyzeMaxWords = 1000;
 		boolean ignoreCase = true;
 		Locale locale = Locale.GERMAN;
 		
 		locations = gazetteerService.getLocationsFromText(text, analyzeMaxWords, ignoreCase, locale);
 		assertTrue(locations.length > 0);
-		Location checkLocation = null;
-		for (Location location : locations) {
-		    if ("http://iqvoc-gazetteer.innoq.com/GEMEINDE1607103082".equals( location.getId() ) ) {
-		        checkLocation = location;
-		        break;
-		    }
-        }
-		assertNotNull( checkLocation );
-		assertEquals( "http://iqvoc-gazetteer.innoq.com/GEMEINDE1607103082", checkLocation.getId() );
-		assertEquals( "-location-admin-use6-", checkLocation.getTypeId() );
-		assertEquals( "16071082", checkLocation.getNativeKey() );
 
 		// english results
 		text = "Frankfurt Main Sachsenhausen Airport";
 		locale = Locale.ENGLISH;
 
 		locations = gazetteerService.getLocationsFromText(text, analyzeMaxWords, ignoreCase, locale);
-		// TODO: check if english is supported
-		//assertTrue(locations.length > 0);
+		assertTrue(locations.length > 0);
 	}
 
 	public final void testFindLocationsFromQueryTerm() {
 		Location[] locations;
 
 		// german locations
-		String queryTerm = "berlin";
+		String queryTerm = "Frankfurt";
 		Locale locale = Locale.GERMAN;
 		
 		// all locations, BEGINS_WITH
 		locations = gazetteerService.findLocationsFromQueryTerm(queryTerm,
 				QueryType.ALL_LOCATIONS, MatchingType.BEGINS_WITH,
 				locale);
-		assertEquals(7, locations.length);
+		assertEquals(5, locations.length);
 		for (Location location : locations) {
 			checkLocation(location, null, null);
-			assertTrue(location.getName().toLowerCase().contains(queryTerm));
+			assertTrue(location.getName().contains(queryTerm));
 		}
 
 		// all locations, EXACT
 		locations = gazetteerService.findLocationsFromQueryTerm(queryTerm,
 				QueryType.ALL_LOCATIONS, MatchingType.EXACT,
 				locale);
-		assertEquals(3, locations.length);
+		assertEquals(4, locations.length);
 		for (Location location : locations) {
 			checkLocation(location, null, null);
-			assertTrue(location.getName().toLowerCase().contains(queryTerm));
+			assertTrue(location.getName().contains(queryTerm));
 		}
 
 		// all locations, CONTAINS
 		locations = gazetteerService.findLocationsFromQueryTerm(queryTerm,
 				QueryType.ALL_LOCATIONS, MatchingType.CONTAINS,
 				locale);
-		assertEquals(13, locations.length);
+		assertEquals(5, locations.length);
 		for (Location location : locations) {
 			checkLocation(location, null, null);
-			assertTrue(location.getName().toLowerCase().contains(queryTerm));
-		}
-
-		// only administrative locations, CONTAINS
-		locations = gazetteerService.findLocationsFromQueryTerm(queryTerm,
-				QueryType.ONLY_ADMINISTRATIVE_LOCATIONS, MatchingType.CONTAINS,
-				locale);
-		assertEquals(11, locations.length);
-		for (Location location : locations) {
-			checkLocation(location, null, null);
-			assertTrue(location.getName().toLowerCase().contains(queryTerm));
-			assertTrue(location.getTypeId().contains("-admin-"));
-			//assertNotNull(location.getNativeKey());
-			assertNotNull(location.getBoundingBox());
+			assertTrue(location.getName().contains(queryTerm));
 		}
 
 		// only administrative locations, BEGINS_WITH
 		locations = gazetteerService.findLocationsFromQueryTerm(queryTerm,
 				QueryType.ONLY_ADMINISTRATIVE_LOCATIONS, MatchingType.BEGINS_WITH,
 				locale);
-		assertEquals(6, locations.length);
+		assertEquals(4, locations.length);
 		for (Location location : locations) {
 			checkLocation(location, null, null);
-			assertTrue(location.getName().toLowerCase().contains(queryTerm));
-			assertTrue(location.getTypeId().contains("-admin-"));
-			//assertNotNull(location.getNativeKey());
+			assertTrue(location.getName().contains(queryTerm));
+			assertNotNull(location.getNativeKey());
 			assertNotNull(location.getBoundingBox());
 		}
-		
-		
-		// expired locations must be removed!
-		queryTerm = "Dessau";
-		locations = gazetteerService.findLocationsFromQueryTerm(queryTerm,
-				QueryType.ALL_LOCATIONS, MatchingType.CONTAINS, locale);
-		//assertEquals(2, locations.length);
-		for (Location location : locations) {
-			assertFalse(location.getIsExpired());
-		}
-		
+
 		// english results
-		queryTerm = "frankfurt";
-		// TODO: locale = Locale.ENGLISH;
+		queryTerm = "Frankfurt";
+		locale = Locale.ENGLISH;
 
 		// all locations
 		locations = gazetteerService.findLocationsFromQueryTerm(queryTerm,
 				QueryType.ALL_LOCATIONS, MatchingType.BEGINS_WITH,
 				locale);
-		assertEquals(4, locations.length);
+		assertEquals(5, locations.length);
 		for (Location location : locations) {
 			checkLocation(location, null, null);
-			assertTrue(location.getName().toLowerCase().contains(queryTerm));
+			assertTrue(location.getName().contains(queryTerm));
 		}
 
 		// only administrative locations
 		locations = gazetteerService.findLocationsFromQueryTerm(queryTerm,
-				QueryType.ONLY_ADMINISTRATIVE_LOCATIONS, MatchingType.BEGINS_WITH,
+				QueryType.ONLY_ADMINISTRATIVE_LOCATIONS, MatchingType.EXACT,
 				locale);
 		assertEquals(4, locations.length);
 		for (Location location : locations) {
 			checkLocation(location, null, null);
-			assertTrue(location.getName().toLowerCase().contains(queryTerm));
+			assertTrue(location.getName().contains(queryTerm));
 			assertNotNull(location.getNativeKey());
 			assertNotNull(location.getBoundingBox());
 		}
-		
-	}
-	
-	public final void testGetSuccessorFromExpired() {
-        Location location = gazetteerService.getLocation( "http://iqvoc-gazetteer.innoq.com/GEMEINDE1510100000", new Locale("de") );
-        assertTrue( location.getIsExpired() );
-        assertEquals( "2012-11-28", location.getExpiredDate() );
-        assertEquals( 1, location.getSuccessorIds().length );
-        assertEquals( "http://iqvoc-gazetteer.innoq.com/_4e9d66f0-1b80-0130-d0e8-482a1437a069", location.getSuccessorIds()[0] );
-	}
-	
-	public final void testCheckTextEncoding() {
-		Location location = gazetteerService.getLocation( "http://iqvoc-gazetteer.innoq.com/BIOSPHAERE3", new Locale("de") );
-		assertEquals( "Biosphärenreservat", location.getTypeName() );
 	}
 
 	private void checkLocation(Location location) {

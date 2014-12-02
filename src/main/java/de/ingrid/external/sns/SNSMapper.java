@@ -5,36 +5,37 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.MissingResourceException;
 import java.util.ResourceBundle;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.apache.log4j.Logger;
 
-import com.hp.hpl.jena.rdf.model.NodeIterator;
-import com.hp.hpl.jena.rdf.model.RDFNode;
-import com.hp.hpl.jena.rdf.model.ResIterator;
-import com.hp.hpl.jena.rdf.model.Resource;
-import com.hp.hpl.jena.rdf.model.Statement;
-import com.hp.hpl.jena.rdf.model.StmtIterator;
+import com.slb.taxi.webservice.xtm.stubs.TopicMapFragment;
+import com.slb.taxi.webservice.xtm.stubs.TopicMapFragmentIndexedDocument;
+import com.slb.taxi.webservice.xtm.stubs.xtm.Association;
+import com.slb.taxi.webservice.xtm.stubs.xtm.BaseName;
+import com.slb.taxi.webservice.xtm.stubs.xtm.InstanceOf;
+import com.slb.taxi.webservice.xtm.stubs.xtm.Member;
+import com.slb.taxi.webservice.xtm.stubs.xtm.Occurrence;
+import com.slb.taxi.webservice.xtm.stubs.xtm.Scope;
+import com.slb.taxi.webservice.xtm.stubs.xtm.Topic;
 
 import de.ingrid.external.om.Event;
 import de.ingrid.external.om.FullClassifyResult;
 import de.ingrid.external.om.IndexedDocument;
-import de.ingrid.external.om.Link;
 import de.ingrid.external.om.Location;
 import de.ingrid.external.om.RelatedTerm;
-import de.ingrid.external.om.RelatedTerm.RelationType;
 import de.ingrid.external.om.Term;
-import de.ingrid.external.om.Term.TermType;
 import de.ingrid.external.om.TreeTerm;
+import de.ingrid.external.om.RelatedTerm.RelationType;
+import de.ingrid.external.om.Term.TermType;
 import de.ingrid.external.om.impl.EventImpl;
 import de.ingrid.external.om.impl.FullClassifyResultImpl;
 import de.ingrid.external.om.impl.IndexedDocumentImpl;
-import de.ingrid.external.om.impl.LinkImpl;
 import de.ingrid.external.om.impl.LocationImpl;
 import de.ingrid.external.om.impl.RelatedTermImpl;
 import de.ingrid.external.om.impl.TermImpl;
@@ -45,19 +46,20 @@ import de.ingrid.external.om.impl.TreeTermImpl;
  */
 public class SNSMapper {
 
-	/** Direction of a hierarchy operation for mapping of results */
+    /** Direction of a hierarchy operation for mapping of results */
     public enum HierarchyDirection { DOWN, UP }
 
 	private final static Logger log = Logger.getLogger(SNSMapper.class);
-	private final static SimpleDateFormat expiredDateParser = new SimpleDateFormat("yyyy-MM-dd");
+	private final static SimpleDateFormat expiredDateParser = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.S");
 
 	private static SNSMapper myInstance;
 
     // Settings
+    private ResourceBundle resourceBundle; 
 	private String SNS_NATIVE_KEY_PREFIX;
-	private ResourceBundle resourceMapper;
-	
-	private Pattern patternNumber = Pattern.compile("-?\\d+");
+
+    /** The three main SNS topic types */
+    private enum TopicType {EVENT, LOCATION, THESA}
 
 
 	/** Get The Singleton */
@@ -69,49 +71,9 @@ public class SNSMapper {
 	}
 
 	private SNSMapper(ResourceBundle resourceBundle) {
-		//this.resourceBundle = resourceBundle;
-		this.resourceMapper = ResourceBundle.getBundle("mapping");
+		this.resourceBundle = resourceBundle;
     	SNS_NATIVE_KEY_PREFIX = resourceBundle.getString("sns.nativeKeyPrefix");
 	}
-	
-	
-	
-	public TreeTerm mapTreeTerm(Resource resource, String lang) {
-        TreeTerm treeTerm = new TreeTermImpl();
-        treeTerm.setId(RDFUtils.getId(resource));
-        treeTerm.setName(RDFUtils.getName(resource, lang));
-        treeTerm.setType(Term.TermType.DESCRIPTOR);
-        addParentInfo(treeTerm, resource);
-        
-        // check for children (simple check)
-        // needed to presentation ("plus"-sign in front of node)
-        NodeIterator it = RDFUtils.getChildren(resource.getModel());
-        while (it.hasNext()) {
-            RDFNode node = it.next();
-            TreeTerm child = new TreeTermImpl();
-            child.setId(RDFUtils.getId(node.asResource()));
-            treeTerm.addChild(child);
-        }
-        
-        return treeTerm;
-    }
-	
-	private void addParentInfo(TreeTerm treeTerm, Resource resource) {
-        //RDFNode parentNode = RDFUtils.getParent(resource.getModel());
-        //if (parentNode != null) {
-            TreeTerm parentTreeTerm = new TreeTermImpl();
-        //    parentTreeTerm.setId(parentNode.toString());
-            treeTerm.addParent(parentTreeTerm);
-        //}
-        
-    }
-	
-	
-	/*
-	 * ==========================================================
-	 */
-
-	
 
     /** Creates a Location list from the given topics.<br/>
      * @param topics sns topics representing locations
@@ -119,35 +81,21 @@ public class SNSMapper {
      * @param langFilter pass requested SNS language for mapping of title ... 
      * @return the locations NEVER NULL (but may be empty)
      */
-    public List<Location> mapToLocationsFromResults(Resource topics, boolean removeExpired, String langFilter) {
-    	List<Location> resultList = new ArrayList<Location>();
-    	if (topics == null) return resultList;
-
-    	NodeIterator it = RDFUtils.getResults(topics);
-    	while (it.hasNext()) {
-			RDFNode node = it.next();
-			// TODO: location typeId not in searchResult
-			// iterate over all exclusively fetched terms!?
-			
-			Location loc = mapToLocation(node.asResource(), new LocationImpl(), langFilter);
-			if (removeExpired && !loc.getIsExpired())
-				resultList.add(loc);
-		}
-        	
-    	return resultList;    	
-    }
-    
-    public List<Location> mapToLocationsFromLocation(Resource topics, boolean removeExpired, String langFilter) {
+    public List<Location> mapToLocations(Topic[] topics,
+    		boolean removeExpired, String langFilter) {
     	List<Location> resultList = new ArrayList<Location>();
 
-    	StmtIterator it = RDFUtils.getRelatedConcepts(topics);
-    	while (it.hasNext()) {
-			Resource nodeRes = it.next().getResource();
-			Location loc = mapToLocation(nodeRes, new LocationImpl(), langFilter);
-			if (removeExpired && !loc.getIsExpired())
-				resultList.add(loc);
-		}
-        	
+    	if ((null != topics)) {
+    		boolean checkExpired = !removeExpired;
+            for (Topic topic : topics) {
+            	if (removeExpired && isExpired(topic)) {
+            		continue;
+            	}
+
+        		resultList.add(mapToLocation(topic, new LocationImpl(), checkExpired, langFilter));
+			}
+        }
+    	
     	return resultList;
     }
 
@@ -158,7 +106,7 @@ public class SNSMapper {
      * @param langFilter pass requested SNS language for mapping of title ... 
      * @return again the outLocation after mapping, NEVER NULL
      */
-    public Location mapToLocation(Resource topic, Location outLocation, String langFilter) {
+    public Location mapToLocation(Topic topic, Location outLocation, String langFilter) {
     	return mapToLocation(topic, outLocation, true, langFilter);
     }
 
@@ -169,62 +117,53 @@ public class SNSMapper {
      * @param langFilter pass requested SNS language for mapping of title ... 
      * @return again the outLocation after mapping, NEVER NULL
      */
-    private Location mapToLocation(Resource topic, Location outLocation, boolean checkExpired, String langFilter) {
-    	outLocation.setId(RDFUtils.getId(topic));
-    	outLocation.setName(RDFUtils.getName(topic, langFilter));
-    	
-    	// check for type name/id
-    	String typeId = RDFUtils.getMemberOf(topic);
-    	if (typeId != null) {
-    		String id = typeId.substring(typeId.lastIndexOf('/')+1);
-    		outLocation.setTypeId(id);
+    private Location mapToLocation(Topic topic, Location outLocation, boolean checkExpired, String langFilter) {
+    	outLocation.setId(topic.getId());
+    	outLocation.setName(getTopicTitle(topic, langFilter));
+    	String typeId = topic.getInstanceOf(0).getTopicRef().getHref();
+    	typeId = typeId.substring(typeId.lastIndexOf("#")+1);
+    	outLocation.setTypeId(typeId);
+    	String typeName = typeId;
+    	try {
+    		typeName = resourceBundle.getString("sns.topic.ref."+typeId);
+    	} catch (MissingResourceException ex) {}
+    	outLocation.setTypeName(typeName);
 
-    		try {
-    			String typeName = resourceMapper.getString("gazetteer."+langFilter+"."+id);
-    			outLocation.setTypeName(typeName);
-    		} catch (MissingResourceException e) {}
+    	// If the topic doesn't contain any more information return the basic info
+    	if (topic.getOccurrence() != null) {
+        	// Iterate over all occurrences and extract the relevant information (bounding box wgs84 coords and the qualifier)
+        	for(int i = 0; i < topic.getOccurrence().length; ++i) {
+//        		log.debug(topic.getOccurrence(i).getInstanceOf().getTopicRef().getHref());
+        		if (topic.getOccurrence(i).getInstanceOf().getTopicRef().getHref().endsWith("wgs84BoxOcc")) {
+//        			log.debug("WGS84 Coordinates: "+topic.getOccurrence(i).getResourceData().get_value());        	            			
+            		String coords = topic.getOccurrence(i).getResourceData().get_value();
+            		String[] ar = coords.split("\\s|,");
+            		if (ar.length == 4) {
+            			outLocation.setBoundingBox(new Float(ar[0]), new Float(ar[1]), new Float(ar[2]), new Float(ar[3]));
+            		}
+        		} else if (topic.getOccurrence(i).getInstanceOf().getTopicRef().getHref().endsWith("qualifier")) {
+//        			log.debug("Qualifier: "+topic.getOccurrence(i).getResourceData().get_value());        	            			
+            		outLocation.setQualifier(topic.getOccurrence(i).getResourceData().get_value());
+        		} else if (topic.getOccurrence(i).getInstanceOf().getTopicRef().getHref().endsWith("nativeKeyOcc")) {
+        			String nativeKeyOcc = topic.getOccurrence(i).getResourceData().get_value();
+        			String[] keys = nativeKeyOcc.split(" ");
+        			for (String nativeKey : keys) {
+        				if (nativeKey.startsWith(SNS_NATIVE_KEY_PREFIX)) {
+        					outLocation.setNativeKey(nativeKey.substring(SNS_NATIVE_KEY_PREFIX.length()));
+        				}
+        			}
+        		}
+        	}
+
+        	if (outLocation.getQualifier() == null)
+        		outLocation.setQualifier(outLocation.getTypeName());
+        	
+        	// ALSO EXPIRED IF REQUESTED !
+        	if (checkExpired) {
+        		outLocation.setIsExpired(isExpired(topic));
+        	}
     	}
-    	
-    	// TODO: determine qualifier like "Stadt" in "<rdf:type rdf:resource="http://schema.org/City"/>" 
-    	//outLocation.setQualifier();
-    	
-    	String nativeKey = RDFUtils.getNativeKey(topic, SNS_NATIVE_KEY_PREFIX);
-    	if ( nativeKey != null ) {
-    	    outLocation.setNativeKey( nativeKey );
-    	// otherwise if it's not "Gemeinde"
-    	} else if (!"-location-admin-use6-".equals( typeId )) {
-    	    Matcher m = patternNumber.matcher( outLocation.getId() );
-    	    String key = null;
-    	    while (m.find()) key = m.group();
-    	    outLocation.setNativeKey( key );
-    	// otherwise log a warning that there was no native key for a "Gemeinde"
-    	} else {
-    	    log.warn( "No native key could be determined for: " + topic.getURI() );
-    	}
-        // in case we didn't find a key, we use the number from the identifier
-    	
-    	// check for bounding box
-    	float[] points = RDFUtils.getBoundingBox(topic);
-    	if (points != null) {
-    		// if bounding box is a coordinate then use same coordinate again
-	    	if (points.length == 2)
-	    		outLocation.setBoundingBox(points[0], points[1], points[0], points[1]);
-	    	else if (points.length == 4)
-	    		outLocation.setBoundingBox(points[0], points[1], points[2], points[3]);
-    	}
-    	
-    	if (outLocation.getQualifier() == null)
-    		outLocation.setQualifier(outLocation.getTypeName());
-    	
-    	// ALSO EXPIRED IF REQUESTED !
-    	if (checkExpired) {
-    		outLocation.setIsExpired(isExpired(topic));
-    		outLocation.setExpiredDate(RDFUtils.getExpireDate(topic));
-    	}
-    	
-    	// check if successor exists
-    	outLocation.setSuccessorIds( RDFUtils.getSuccessors(topic));
-    	
+
     	return outLocation;
     }
 
@@ -234,21 +173,18 @@ public class SNSMapper {
      * @param langFilter pass requested SNS language for mapping of title ... 
      * @return the terms NEVER NULL
      */
-    public List<Term> mapToTerms(Resource searchResults, TermType filter, String langFilter) {
+    public List<Term> mapToTerms(Topic[] topics, TermType filter, String langFilter) {
     	List<Term> resultList = new ArrayList<Term>();
 
-    	if ((null != searchResults)) {
-    		NodeIterator it = RDFUtils.getResults(searchResults);
-    		
-    		while (it.hasNext()) {
-    			RDFNode node = it.next();
+    	if ((null != topics)) {
+            for (Topic topic : topics) {
             	if (filter != null) {
-            		if (!getTermType(RDFUtils.getType( node.asResource() ), false).equals(filter)) {
+            		if (!getTermType(topic).equals(filter)) {
             			continue;
             		}
             	}
-    			resultList.add(mapToTerm(node.asResource(), new TermImpl(), langFilter));
-    		}
+    			resultList.add(mapToTerm(topic, new TermImpl(), langFilter));
+			}
         }
     	
     	return resultList;
@@ -260,51 +196,22 @@ public class SNSMapper {
      * @param langFilter pass requested SNS language for mapping of title ... 
      * @return again the outTerm after mapping, NEVER NULL
      */
-    public Term mapToTerm(Resource res, Term outTerm, String langFilter) {
-    	// if the term is inside a search result the id is inside a link-tag
-		outTerm.setId(RDFUtils.getId(res));
-		String name = RDFUtils.getName(res, langFilter);
-		if (name == null) {
-		    // get first alternative Label
-		    List<String> altLabels = RDFUtils.getAltLabels(res, langFilter);
-		    if (altLabels.size() > 0) {
-		        name = altLabels.get(0);
-		    }
-		}
-		outTerm.setName(name);
+    public Term mapToTerm(Topic inTopic, Term outTerm, String langFilter) {
+		outTerm.setId(inTopic.getId());
+		outTerm.setName(getTopicTitle(inTopic, langFilter));
+		outTerm.setType(getTermType(inTopic));
 
-		boolean isTopTerm = RDFUtils.isTopConcept( res );
-		outTerm.setType( getTermType( RDFUtils.getType( res ), isTopTerm ) );
+		outTerm.setInspireThemes(getInspireThemes(inTopic));
 
-		//outTerm.setInspireThemes(getInspireThemes(inTopic));
-
-		String gemet = RDFUtils.getGemetRef(res);
-    	if (gemet != null) {
+    	if (isGemet(inTopic)) {
     		// if GEMET, then the title is used for the title in SNSTopic and, in case UMTHES is different
     		// the UMTHES value is stored in alternateTitle
     		outTerm.setAlternateName(outTerm.getName());
-    		//TODO outTerm.setName(getGemetName(inTopic));
-    		outTerm.setAlternateId(getGemetId(gemet));
+    		outTerm.setName(getGemetName(inTopic));
+    		outTerm.setAlternateId(getGemetId(inTopic));
     	}
 
     	return outTerm;
-    }
-    
-    public List<Term> mapSimilarToTerms(Resource searchResults, String langFilter) {
-    	List<Term> resultList = new ArrayList<Term>();
-
-    	if ((null != searchResults)) {
-    		List<String> labels = RDFUtils.getAltLabels(searchResults, langFilter);
-    		
-    		for (String label : labels) {
-    			// since synonyms do not have an extra ID we just use the label as identifier
-    			// necessary, because otherwise the iBus throwse other terms away when copying array
-				Term t = new TermImpl(label, label, Term.TermType.DESCRIPTOR);
-    			resultList.add(t);
-    		}
-        }
-    	
-    	return resultList;
     }
 
     /** Creates a RelatedTerm list from the given TopicMapFragment (result of relation operation).<br/>
@@ -314,88 +221,27 @@ public class SNSMapper {
      * @return the related terms NEVER NULL
      */
     public List<RelatedTerm> mapToRelatedTerms(String fromTopicId,
-    		Resource res,
+    		TopicMapFragment mapFragment,
     		String langFilter) {
     	List<RelatedTerm> resultList = new ArrayList<RelatedTerm>();
 
-    	// get all synonyms
-    	List<String> altLabels = RDFUtils.getAltLabels(res, langFilter);
-    	resultList.addAll(mapSynonymsFromAltLabels(altLabels, res.getURI()));
-    	
-    	// get all parents
-    	StmtIterator iterator = RDFUtils.getParents(res);
-    	resultList.addAll(mapResourceToRelatedTerm(iterator, langFilter, RelationType.PARENT, TermType.DESCRIPTOR));
-    	
-    	// get all children
-    	iterator = RDFUtils.getChildren(res);
-    	resultList.addAll(mapResourceToRelatedTerm(iterator, langFilter, RelationType.CHILD, TermType.DESCRIPTOR));
-    	
-    	// get all related concepts
-    	iterator = RDFUtils.getRelatedConcepts(res);
-    	resultList.addAll(mapResourceToRelatedTerm(iterator, langFilter, RelationType.RELATIVE, TermType.DESCRIPTOR));    	
+        final Topic[] topics = getTopics(mapFragment);
+        final Association[] associations = getAssociations(mapFragment);
+
+        // iterate through associations to find the correct associations !
+        if (associations != null) {
+            for (Association association : associations) {
+                RelatedTerm relTerm = getRelatedTermBasics(fromTopicId, association);
+                if (relTerm != null) {
+                	final Topic foundTopic = getTopicById(topics, relTerm.getId(), false);
+                	if (foundTopic != null) {
+                    	resultList.add((RelatedTerm)mapToTerm(foundTopic, relTerm, langFilter));                		
+                	}
+                }
+            }
+        }
 
     	return resultList;
-    }
-    
-    private List<RelatedTerm> mapSynonymsFromAltLabels(List<String> altLabels, String id) {
-    	List<RelatedTerm> result = new ArrayList<RelatedTerm>();
-    	for (String altLabel : altLabels) {
-    		RelatedTerm rt = new RelatedTermImpl();
-    		rt.setId(id);
-    		rt.setName(altLabel);
-    		rt.setRelationType(RelationType.RELATIVE);
-    		rt.setType(TermType.NON_DESCRIPTOR);
-			result.add(rt);
-		}
-		return result;
-	}
-    
-    private List<RelatedTerm> mapResourceToRelatedTerm(StmtIterator resourceIt, String lang, RelationType relType, TermType termType) {
-    	List<RelatedTerm> result = new ArrayList<RelatedTerm>();
-    	while (resourceIt.hasNext()) {
-    		Statement stmt = resourceIt.next();
-    		RelatedTerm rt = new RelatedTermImpl();
-    		rt.setId(RDFUtils.getId(stmt.getResource()));
-    		rt.setName(RDFUtils.getName(stmt.getResource(), lang));
-    		rt.setRelationType(relType);
-    		rt.setType(termType);
-			result.add(rt);
-		}
-		return result;
-	}
-
-	public List<TreeTerm> mapRootToTreeTerms(String fromTopicId,
-    		HierarchyDirection whichDirection,
-    		Resource termResource,
-    		String langFilter) {
-    	
-    	List<TreeTerm> resultList = new ArrayList<TreeTerm>();
-    	ResIterator children = RDFUtils.getTopConceptsOf(termResource.getModel());
-		while (children.hasNext()) {
-			TreeTerm treeTerm = new TreeTermImpl();
-			RDFNode child = (RDFNode) children.next();
-			treeTerm.setId(RDFUtils.getId(child.asResource()));
-			treeTerm.setName(RDFUtils.getName(child.asResource(), langFilter));
-			treeTerm.setType(Term.TermType.DESCRIPTOR);
-			
-			resultList.add(treeTerm);
-			
-			// check for children (simple check)
-			// needed to presentation ("plus"-sign in front of node)
-			/*StmtIterator it = RDFUtils.getChildren(child.asResource());
-			while (it.hasNext()) {
-				Statement node = it.next();
-				TreeTerm subChild = new TreeTermImpl();
-				subChild.setId(RDFUtils.getId(node.getResource()));
-				treeTerm.addChild(subChild);
-			}*/
-			// always add a (dummy) child and assume the root nodes have children
-			TreeTerm dummyChild = new TreeTermImpl();
-			dummyChild.setId( "dummy" );
-			treeTerm.addChild( dummyChild );
-			
-		}
-		return resultList;
     }
 
     /** Creates a hierarchy list of tree terms dependent from hierarchy operation.<br/>
@@ -409,135 +255,200 @@ public class SNSMapper {
      */
     public List<TreeTerm> mapToTreeTerms(String fromTopicId,
     		HierarchyDirection whichDirection,
-    		Resource termResource,
+    		TopicMapFragment mapFragment,
     		String langFilter) {
-    	
-    	List<TreeTerm> resultList = new ArrayList<TreeTerm>();
-    	if (whichDirection == HierarchyDirection.DOWN) {
-			StmtIterator children = RDFUtils.getChildren(termResource);
-			while (children.hasNext()) {
-				TreeTerm treeTerm = new TreeTermImpl();
-				Statement child = children.next();
-				treeTerm.setId(RDFUtils.getId(child.getResource()));
-				treeTerm.setName(RDFUtils.getName(child.getResource(), langFilter));
-				treeTerm.setType(Term.TermType.DESCRIPTOR);
-				
-				// needed to determine that it's not a top-term!
-				TreeTerm term = new TreeTermImpl();
-				term.setId(RDFUtils.getId(termResource));
-				term.setName(RDFUtils.getName(termResource, langFilter));
-				treeTerm.addParent(term);
-				
-				resultList.add(treeTerm);
-				
-				// check for children (simple check)
-				// needed to presentation ("plus"-sign in front of node)
-				StmtIterator it = RDFUtils.getChildren(child.getResource());
-				while (it.hasNext()) {
-					Statement node = it.next();
-					TreeTerm subChild = new TreeTermImpl();
-					subChild.setId(RDFUtils.getId(node.getResource()));
-					subChild.setName(RDFUtils.getName(node.getResource(), langFilter));
-					treeTerm.addChild(subChild);
-				}
-			}
-    	} else {
-    		// set start term
-    		TreeTerm term = new TreeTermImpl();
-			term.setId(RDFUtils.getId(termResource));
-			term.setName(RDFUtils.getName(termResource, langFilter));
-			term.setType(Term.TermType.DESCRIPTOR);
-			resultList.add(term);
-			getAllParentsFrom(term, termResource, langFilter);
-    	}
-		return resultList;
+        final Topic[] topics = getTopics(mapFragment);
+        final Association[] associations = getAssociations(mapFragment);
+
+        // iterate through associations and set up all according TreeTerms !
+        
+        // all TreeTerrms are stored in Map
+        Map<String, TreeTerm> treeTermMap = new HashMap<String, TreeTerm>();
+        // ids of top terms are stored in list 
+        List<String> topTermIdsList = new ArrayList<String>();
+
+        if (associations != null) {
+            for (Association assoc : associations) {
+
+            	// determine parent and child from association
+                Topic parentTopic = null;
+                Topic childTopic = null;
+                final Member[] members = assoc.getMember();
+                for (Member member : members) {
+                	final Topic foundTopic =
+                		getTopicById(topics, member.getTopicRef()[0].getHref(), false);
+                	
+                	// check additional filtering of language if requested !
+                	if (langFilter != null) {
+                		if (!isLanguage(foundTopic, langFilter)) {
+                			continue;
+                		}
+                	}
+
+                    final String assocMember = member.getRoleSpec().getTopicRef().getHref();
+                    if (assocMember.endsWith("#narrowerTermMember")) {
+                        childTopic = foundTopic;
+                    } else if (assocMember.endsWith("#widerTermMember")) {
+                        parentTopic = foundTopic;
+                    }
+                }
+
+                // set up according tree terms !
+                if ((null != parentTopic) && (null != childTopic)) {
+                    TreeTerm parentTreeTerm = null;
+                    if (treeTermMap.containsKey(parentTopic.getId())) {
+                        parentTreeTerm = treeTermMap.get(parentTopic.getId());
+                    } else {
+                    	parentTreeTerm = (TreeTerm) mapToTerm(parentTopic, new TreeTermImpl(), langFilter);
+                        treeTermMap.put(parentTopic.getId(), parentTreeTerm);
+                    }
+                    TreeTerm childTreeTerm = null;
+                    if (treeTermMap.containsKey(childTopic.getId())) {
+                    	childTreeTerm = treeTermMap.get(childTopic.getId());
+                    } else {
+                    	childTreeTerm = (TreeTerm) mapToTerm(childTopic, new TreeTermImpl(), langFilter);
+                        treeTermMap.put(childTopic.getId(), childTreeTerm);
+                    }
+
+                    // set up parent child relation in TreeTerms
+                    parentTreeTerm.addChild(childTreeTerm);
+                    childTreeTerm.addParent(parentTreeTerm);
+                    
+                    // remember top nodes if top nodes were requested !
+                    if (fromTopicId == null &&
+                    		parentTopic.getInstanceOf(0).getTopicRef().getHref().endsWith("#topTermType")) {
+                    	if (!topTermIdsList.contains(parentTreeTerm.getId())) {
+                    		topTermIdsList.add(parentTreeTerm.getId());	
+                    	}
+                    }
+                }
+            }
+        } else {
+        	// NO ASSOCIATIONS ! But we may have a topic !
+        	// e.g. when TOP TERM and hierarchy is UP or leaf term and hierarchy is DOWN !
+        	// we just map all topics with NO parent or child data
+        	if (topics != null) {
+        		for (Topic topic : topics) {
+                    treeTermMap.put(topic.getId(), (TreeTerm) mapToTerm(topic, new TreeTermImpl(), langFilter));
+        		}
+        	}
+        }
+
+        // set up return list dependent from request
+        List<TreeTerm> resultList = new ArrayList<TreeTerm>();
+        
+        if (fromTopicId == null) {
+            // top terms request
+        	for (String topTermId : topTermIdsList) {
+        		resultList.add(treeTermMap.get(topTermId));
+        	}
+        } else {
+        	// hierarchy request        	
+        	// fetch start term
+        	TreeTerm startTerm = treeTermMap.get(fromTopicId);
+        	if (startTerm != null) {
+            	if (whichDirection == HierarchyDirection.DOWN) {
+            		// DOWN ! startTerm isn't part of list. If leaf then no children !
+            		if (startTerm.getChildren() != null) {
+                		for (Term childTerm : startTerm.getChildren()) {
+                			resultList.add(treeTermMap.get(childTerm.getId()));
+                		}            			
+            		}
+            	} else {
+            		// UP ! startTerm is first term in list.
+            		resultList.add(startTerm);
+            	}
+        	}
+        }
+        
+    	return resultList;
     }
-    
-    private TreeTerm[] getAllParentsFrom(TreeTerm term, Resource res, String lang) {
-    	List<TreeTerm> terms = new ArrayList<TreeTerm>();
-    	
-    	StmtIterator parents = RDFUtils.getParents(res);
-    	while (parents.hasNext()) {
-    		Statement parent = parents.next();
-    		TreeTerm parentTerm = new TreeTermImpl();
-    		parentTerm.setId(RDFUtils.getId(parent.getResource()));
-    		parentTerm.setName(RDFUtils.getName(parent.getResource(), lang));
-    		parentTerm.setType(Term.TermType.DESCRIPTOR);
-    		parentTerm.addChild(term);
-    		Resource grandParentRes = parent.getModel().getResource(parentTerm.getId());
-    		// recursive call!
-    		getAllParentsFrom(parentTerm, grandParentRes, lang);
-    		term.addParent(parentTerm);
-    		terms.add(parentTerm);    		
-    	}
-		return terms.toArray(new TreeTerm[terms.size()]);
-    }
-    
 
     /** Creates an Event list from the given topics.<br/>
      * @param topics sns topics representing events
      * @return the events NEVER NULL
      */
-    public List<Event> mapToEvents(Resource eventsRes, String lang) {
+    public List<Event> mapToEvents(Topic[] topics) {
     	List<Event> resultList = new ArrayList<Event>();
-    	if (eventsRes == null) return resultList;
 
-    	NodeIterator it = RDFUtils.getResults(eventsRes);
-    	while (it.hasNext()) {
-    		RDFNode eventNode = it.next();
-    		resultList.add(mapToEvent(eventNode.asResource(), lang));
-    	}
-		
+    	if ((null != topics)) {
+            for (Topic topic : topics) {
+    			resultList.add(mapToEvent(topic));
+			}
+        }
     	
     	return resultList;
     }
 
     /** Creates an Event from the given topic.<br/>
-     * @param eventRes sns topic representing an event
+     * @param topic sns topic representing an event
      * @return the event, NEVER NULL
      */
-    public Event mapToEvent(Resource eventRes, String lang) {
+    public Event mapToEvent(Topic topic) {
     	EventImpl result = new EventImpl();
-    	
-    	result.setId(RDFUtils.getId(eventRes));
-    	result.setTitle(RDFUtils.getName(eventRes, lang));
-    	
-    	String typeUrl = RDFUtils.getMemberOf(eventRes);
-    	String id = typeUrl.substring(typeUrl.lastIndexOf('/')+1);
-    	result.setTypeId(id);
-    	
-    	result.setDescription(RDFUtils.getDefinition(eventRes, lang));
-    	result.setTimeAt(convertToDate(RDFUtils.getDateStart(eventRes)));
-    	result.setTimeRangeFrom(result.getTimeAt());
-    	result.setTimeRangeTo(convertToDate(RDFUtils.getDateEnd(eventRes)));
-    	
-    	StmtIterator moreInfo = RDFUtils.getFurtherInfo(eventRes);
-    	while (moreInfo.hasNext()) {
-    		Link l = new LinkImpl();
-    		Resource info = moreInfo.next().getResource();
-    		l.setTitle(RDFUtils.getDctTitle(info));
-    		l.setLinkAddress(RDFUtils.getDctPage(info));
-    		result.addLink(l);
-    	}
-    	
-    	return result;
 
+		result.setId(topic.getId());
+		result.setTitle(topic.getBaseName(0).getBaseNameString().get_value());
+    	String typeId = topic.getInstanceOf(0).getTopicRef().getHref();
+    	typeId = typeId.substring(typeId.lastIndexOf("#")+1);
+    	result.setTypeId(typeId);
+
+    	for (Occurrence occ: topic.getOccurrence()) {
+    		if (occ.getInstanceOf().getTopicRef().getHref().endsWith("descriptionOcc")) {
+    			if (occ.getScope().getTopicRef()[0].getHref().endsWith("de") && occ.getResourceData() != null)
+    				result.setDescription(occ.getResourceData().get_value());
+
+    		} else if (occ.getInstanceOf().getTopicRef().getHref().endsWith("temporalAtOcc")) {        		
+//    			log.debug("Temporal at: "+occ.getResourceData().get_value());
+    	    	result.setTimeAt(convertToDate(occ.getResourceData().get_value()));
+
+    		} else if (occ.getInstanceOf().getTopicRef().getHref().endsWith("temporalFromOcc")) {        		
+//    			log.debug("Temporal from: "+occ.getResourceData().get_value());
+    	    	result.setTimeRangeFrom(convertToDate(occ.getResourceData().get_value()));
+
+    		} else if (occ.getInstanceOf().getTopicRef().getHref().endsWith("temporalToOcc")) {        		
+//    			log.debug("Temporal to: "+occ.getResourceData().get_value());
+    	    	result.setTimeRangeTo(convertToDate(occ.getResourceData().get_value()));
+        	}
+    	}
+
+    	return result;
     }
 
     /** Creates a FullClassifyResult from the given mapFragment
-     * @param resThesaurus result of fullClassify as delivered by Thesaurus-SNS
-     * @param resGazetteer result of fullClassify as delivered by Gazetteer-SNS
-     * @param resChronical result of fullClassify as delivered by Chronical-SNS
+     * @param inMap result of fullClassify as delivered by SNS
      * @param langFilter pass requested SNS language for mapping of title ... 
      * @return the FullClassifyResult NEVER NULL
      */
-    public FullClassifyResult mapToFullClassifyResult(Resource resThesaurus, Resource resGazetteer, Resource resChronical, String langFilter) {
+    public FullClassifyResult mapToFullClassifyResult(TopicMapFragment inMap, String langFilter) {
     	FullClassifyResultImpl result = new FullClassifyResultImpl();
     	
-    	//result.setIndexedDocument(mapToIndexedDocument(resThesaurus));
-    	result.setLocations(mapToLocationsFromResults(resGazetteer, true, langFilter));
-    	result.setTerms(mapToTerms(resThesaurus, null, langFilter));
-    	result.setEvents(mapToEvents(resChronical, langFilter));
+    	result.setIndexedDocument(mapToIndexedDocument(inMap.getIndexedDocument()));
+    	
+    	Topic[] topics = inMap.getTopicMap().getTopic();
+    	if (null == topics) {
+    		topics = new Topic[0];
+    	}
+
+    	// sort topics into different Lists
+    	List<Topic> locTopics = new ArrayList<Topic>();
+    	List<Topic> thesaTopics = new ArrayList<Topic>();
+    	List<Topic> eventTopics = new ArrayList<Topic>();
+
+    	for (Topic topic : topics) {
+    		TopicType topicType = getTopicType(topic);
+    		if (topicType == TopicType.LOCATION) {
+    			locTopics.add(topic);
+    		} else if (topicType == TopicType.THESA) {
+    			thesaTopics.add(topic);
+    		} else if (topicType == TopicType.EVENT) {
+    			eventTopics.add(topic);
+    		}
+    	}
+    	
+    	result.setLocations(mapToLocations(locTopics.toArray(new Topic[locTopics.size()]), true, langFilter));
+    	result.setTerms(mapToTerms(thesaTopics.toArray(new Topic[thesaTopics.size()]), null, langFilter));
+    	result.setEvents(mapToEvents(eventTopics.toArray(new Topic[eventTopics.size()])));
 
     	return result;
     }
@@ -546,44 +457,146 @@ public class SNSMapper {
      * @param inDoc result of fullClassify as delivered by SNS
      * @return the IndexedDocument NEVER NULL
      */
-    public IndexedDocument mapToIndexedDocument(String inDoc, URL url) {
+    private IndexedDocument mapToIndexedDocument(TopicMapFragmentIndexedDocument inDoc) {
     	IndexedDocumentImpl result = new IndexedDocumentImpl();
 
-    	result.setClassifyTimeStamp(new Date());
-    	result.setTitle(HtmlUtils.getHtmlTagContent(inDoc, "title"));
-    	result.setDescription(HtmlUtils.getHtmlMetaTagContent(inDoc, "description"));
-    	result.setURL(url);
-    	
-    	String lang = HtmlUtils.getHtmlDocLanguage(inDoc);
-		try {
-        	result.setLang(new Locale(lang));	
-		} catch (Exception e) {
-	    	log.warn("Error mapping Lang: " + lang, e);
-	    	result.setLang(new Locale("de"));
-		}
-    	/*
+    	result.setClassifyTimeStamp(inDoc.getTimestamp());
+    	result.setTitle(inDoc.getTitle());
+    	result.setDescription(inDoc.get_abstract());
+    	if (inDoc.getUri() != null) {
+    		try {
+            	result.setURL(new URL(inDoc.getUri()));
+    		} catch (Exception e) {
+    	    	log.warn("Error mapping URI: " + inDoc.getUri(), e);
+    		}
+    	}
+    	if (inDoc.getLang() != null) {
+    		try {
+            	result.setLang(new Locale(inDoc.getLang()));    			
+    		} catch (Exception e) {
+    	    	log.warn("Error mapping Lang: " + inDoc.getLang(), e);
+    		}
+    	}
 
     	result.setTimeAt(convertToDate(inDoc.getAt()));
     	result.setTimeFrom(convertToDate(inDoc.getFrom()));
     	result.setTimeTo(convertToDate(inDoc.getTo()));
-    	 */
+
     	return result;
     }
-    
-    private TermType getTermType(String nodeType, boolean isTopTerm) {
-		/*if (isTopTerm) 
+
+	/** Get topics from fragment
+	 * @param mapFragment sns result
+	 * @return the topics OR NULL
+	 */
+	public Topic[] getTopics(TopicMapFragment mapFragment) {
+		Topic[] topics = null;
+	    if (null != mapFragment) {
+	    	topics = mapFragment.getTopicMap().getTopic();
+	    }
+	    return topics;
+	}
+	
+    /** Return topic with given id from topic list.
+     * @param topics list of topics
+     * @param topicId id of topic to extract from list
+     * @param removeExpired if true checks whether topic is expired and returns null if so !
+     * @return the found topic or NULL if topic not found or is expired (if requested)
+     */
+    private Topic getTopicById(Topic[] topics, String topicId, boolean removeExpired) {
+    	// determine topic from topic list
+        for (Topic topic : topics) {
+            if (topicId.equals(topic.getId())) {
+            	// topic found, check expired if requested
+            	if (!removeExpired || !isExpired(topic)) {
+                	return topic;
+            	}
+            }
+        }
+
+        return null;
+    }
+
+	/** Get associations from fragment
+	 * @param mapFragment sns result
+	 * @return the associations OR NULL
+	 */
+	private Association[] getAssociations(TopicMapFragment mapFragment) {
+		Association[] associations = null;
+	    if (null != mapFragment) {
+	    	associations = mapFragment.getTopicMap().getAssociation();
+	    }
+	    return associations;
+	}
+	
+    private TopicType getTopicType(Topic topic) {
+		String instance = topic.getInstanceOf()[0].getTopicRef().getHref();
+//		log.debug("InstanceOf: "+instance);
+		if (instance.indexOf("topTermType") != -1 || instance.indexOf("nodeLabelType") != -1
+		 || instance.indexOf("descriptorType") != -1 || instance.indexOf("nonDescriptorType") != -1) {
+			return TopicType.THESA;
+
+		} else if (instance.indexOf("activityType") != -1 || instance.indexOf("anniversaryType") != -1
+				 || instance.indexOf("conferenceType") != -1 || instance.indexOf("disasterType") != -1
+				 || instance.indexOf("historicalType") != -1 || instance.indexOf("interYearType") != -1
+				 || instance.indexOf("legalType") != -1 || instance.indexOf("observationType") != -1
+				 || instance.indexOf("natureOfTheYearType") != -1 || instance.indexOf("publicationType") != -1) {
+			return TopicType.EVENT;
+
+		} else { // if instance.indexOf("nationType") != -1 || ...
+			return TopicType.LOCATION;
+		}
+    }
+
+    private String getTopicTitle(Topic topic, String langFilter) {
+        BaseName[] baseNames = topic.getBaseName();
+        // Set a default if for the selected language nothing exists.
+        String title = baseNames[0].getBaseNameString().get_value();
+        for (int i = 0; i < baseNames.length; i++) {
+            final Scope scope = baseNames[i].getScope();
+            if (scope != null) {
+                final String href = scope.getTopicRef()[0].getHref();
+                if (href.endsWith('#' + langFilter)) {
+                    title = baseNames[i].getBaseNameString().get_value();
+                    break;
+                }
+            }
+        }
+        
+        return title;
+    }
+
+    private Occurrence getOccurrence(Topic topic, String occurrenceType) {
+    	Occurrence result = null;
+    	
+    	if (null != topic.getOccurrence()) {
+	    	for (Occurrence occ: topic.getOccurrence()) {
+	    		if (occ.getInstanceOf().getTopicRef().getHref().endsWith(occurrenceType)) {
+	    			result = occ;
+	    		}
+	    	}
+    	}
+
+    	return result;
+    }
+
+    private TermType getTermType(Topic t) {
+    	String nodeType = t.getInstanceOf(0).getTopicRef().getHref();
+
+		if (nodeType.indexOf("topTermType") != -1) 
 			return TermType.NODE_LABEL;
-		else */
-        if (nodeType.indexOf("#Label") != -1)
+		else if (nodeType.indexOf("nodeLabelType") != -1) 
 			return TermType.NODE_LABEL;
-		else if (nodeType.indexOf("#Concept") != -1)
+		else if (nodeType.indexOf("descriptorType") != -1) 
 			return TermType.DESCRIPTOR;
-		else if (nodeType.indexOf("#Result") != -1)
-		    return TermType.DESCRIPTOR;
+		// SNS 2.1
+		else if (nodeType.indexOf("nonDescriptorType") != -1 ||
+				// SNS 2.0
+				nodeType.indexOf("synonymType") != -1)
+			return TermType.NON_DESCRIPTOR;
 		else
 			return TermType.NODE_LABEL;
     }
-    
 
     /**
      * Determine whether the given association is a relation of the passed from-term
@@ -593,7 +606,6 @@ public class SNSMapper {
      * @param assoc an SNS association of the from-term
      * @return the found related term OR NULL (if no association to a term)
      */
-    /*
     private RelatedTerm getRelatedTermBasics(String fromTermId, Association assoc) {
     	RelatedTerm result = null;
     	
@@ -631,20 +643,50 @@ public class SNSMapper {
 
         return result;
     }
-	*/
 
-    private boolean isExpired(Resource topic) {
-        Date expDate = null;
-        
-        String date = RDFUtils.getExpireDate(topic);
-        if (date != null) {
-	        try {
-	            expDate = expiredDateParser.parse(date);
-	        } catch (ParseException e) {
-	            log.error("Not expected date format in sns expiredOcc.", e);
-	        }
+    private boolean isLanguage(Topic topic, String langFilter) {
+        BaseName[] baseNames = topic.getBaseName();
+        for (int i = 0; i < baseNames.length; i++) {
+            final Scope scope = baseNames[i].getScope();
+            if (scope != null) {
+                final String href = scope.getTopicRef()[0].getHref();
+                if (href.endsWith('#' + langFilter)) {
+                	return true;
+                }
+            }
         }
         
+        return false;
+    }
+
+    private boolean isGemet(Topic topic) {
+    	Occurrence occ = getOccurrence(topic, "gemet1.0");
+    	if (null != occ) {
+    		return true;
+    	}
+    	
+    	return false;
+    }
+
+    private boolean isExpired(Topic topic) {
+        Date expDate = null;
+        Occurrence[] occurrences = topic.getOccurrence();
+        if (null != occurrences) {
+            for (Occurrence occ : occurrences) {
+                final InstanceOf instanceOf = occ.getInstanceOf();
+                if (instanceOf != null) {
+                    final String type = instanceOf.getTopicRef().getHref();
+                    if (type.endsWith("expiredOcc")) {
+                        try {
+                            expDate = expiredDateParser.parse(occ.getResourceData().get_value());
+                        } catch (ParseException e) {
+                            log.error("Not expected date format in sns expiredOcc.", e);
+                        }
+                    }
+                }
+            }
+        }
+
         boolean isExpired = false;
         if (expDate != null) {
         	isExpired = expDate.before(new Date());
@@ -653,17 +695,57 @@ public class SNSMapper {
         return isExpired;
     }
 
-    /**
-     * Extract the id from a gemet url and return it according to 
-     * style: GEMETID9242 from
-     * e.g. http://www.eionet.europa.eu/gemet/concept/9242 
-     * @param gemetUrl
-     * @return
-     */
-    private String getGemetId(String gemetUrl) {
-    	int pos = gemetUrl.lastIndexOf('/') + 1;
-    	return "GEMETID" + gemetUrl.substring(pos);
+    private String getGemetName(Topic topic) {
+    	String result = null;
+
+    	Occurrence occ = getOccurrence(topic, "gemet1.0");
+    	if (null != occ) {
+    		String gemetOccurence = occ.getResourceData().get_value();
+        	if (gemetOccurence != null) {
+        		String[] gemetParts = gemetOccurence.split("@");
+//            	log.debug("gemet title: "+gemetParts[1]);
+        		result = gemetParts[1];
+        	}
+    	}
+    	
+    	return result;
     }
+
+    private String getGemetId(Topic topic) {
+    	String result = null;
+
+    	Occurrence occ = getOccurrence(topic, "gemet1.0");
+    	if (null != occ) {
+    		String gemetOccurence = occ.getResourceData().get_value();
+        	if (gemetOccurence != null) {
+        		String[] gemetParts = gemetOccurence.split("@");
+//            	log.debug("gemet id: "+gemetParts[0]);
+        		return gemetParts[0];
+        	}
+    	}
+
+    	return result;
+    }
+
+    private List<String> getInspireThemes(Topic topic) {
+    	List<String> inspireThemes = new ArrayList<String>();
+    	
+    	if (null != topic.getOccurrence()) {
+	    	for (Occurrence occ: topic.getOccurrence()) {
+	    		if (occ.getInstanceOf().getTopicRef().getHref().endsWith("iTheme2007")) {
+	    			String inspireOccurence = occ.getResourceData().get_value();
+
+	    			// TODO AW: ENGLISH also!!!
+	    			if (inspireOccurence != null) {
+	    	    		String[] inspireParts = inspireOccurence.split("@");
+		    			inspireThemes.add(inspireParts[1]);
+	    	    	}
+	    		}
+	    	}
+    	}
+    	
+		return inspireThemes;
+	}
 
     private Date convertToDate(String dateString) {
     	if (dateString == null) {
@@ -683,7 +765,7 @@ public class SNSMapper {
 	    		result = df.parse(dateString);
 	    	}
 	    	catch (java.text.ParseException pe) {
-	    		//log.debug(pe);
+//	    		log.debug(pe);
 	    	}
 
 	    	if (result != null) {
@@ -697,14 +779,4 @@ public class SNSMapper {
 
     	return result;
     }
-
-	public List<Event> mapToAnniversaries(Resource eventsRes, String langFilter) {
-		List<Event> events = new ArrayList<Event>();
-		ResIterator it = RDFUtils.getConcepts(eventsRes.getModel());
-    	while (it.hasNext()) {
-    		Resource eventRes = it.next();
-    		events.add(mapToEvent(eventRes, langFilter));
-    	}
-		return events;
-	}
 }
