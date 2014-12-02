@@ -438,7 +438,9 @@ public class SNSMapper {
     	for (Topic topic : topics) {
     		TopicType topicType = getTopicType(topic);
     		if (topicType == TopicType.LOCATION) {
-    			locTopics.add(topic);
+    		    // do not add any locations since those should come from the WFS Service
+    		    // which does not support autoClassify! (REDMINE-551)
+    			// locTopics.add(topic);
     		} else if (topicType == TopicType.THESA) {
     			thesaTopics.add(topic);
     		} else if (topicType == TopicType.EVENT) {
