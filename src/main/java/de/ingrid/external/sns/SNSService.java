@@ -585,4 +585,23 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 
 	    return topics;
 	}
+
+    @Override
+    public Term[] findTermsFromQueryTerm(String arg0, String arg1,
+            de.ingrid.external.ThesaurusService.MatchingType arg2, boolean arg3, Locale arg4) {
+        log.warn( "this method is not supported!" );
+        return null;
+    }
+
+    @Override
+    public TreeTerm[] getHierarchyNextLevel(String arg0, String arg1, Locale arg2) {
+        log.warn( "this method is not supported!" );
+        return null;
+    }
+
+    @Override
+    public TreeTerm getHierarchyPathToTop(String arg0, String arg1, Locale arg2) {
+        log.warn( "this method is not supported!" );
+        return null;
+    }
 }

@@ -38,7 +38,8 @@ public class FullClassifyTest extends TestCase {
 		result = fullClassifyService.autoClassifyURL(url, analyzeMaxWords, ignoreCase, null, locale);
 		checkFullClassifyResult(result, url);
 		assertTrue(result.getTerms().size() > 0);
-		assertTrue(result.getLocations().size() > 0);
+		// no locations anymore ((REDMINE-551) 
+		assertEquals( 0, result.getLocations().size());
 		// may have NO EVENTS ? 
 //		assertTrue(result.getEvents().size() > 0);
 		System.out.println("NUMBER OF EVENTS: " + result.getEvents().size());
@@ -54,7 +55,8 @@ public class FullClassifyTest extends TestCase {
 		result = fullClassifyService.autoClassifyURL(url, analyzeMaxWords, ignoreCase, FilterType.ONLY_LOCATIONS, locale);
 		checkFullClassifyResult(result, url);
 		assertTrue(result.getTerms().size() == 0);
-		assertTrue(result.getLocations().size() > 0);
+		// no locations anymore ((REDMINE-551) 
+		assertEquals(0, result.getLocations().size());
 		assertTrue(result.getEvents().size() == 0);
 
 		// ONLY EVENTS
@@ -63,7 +65,8 @@ public class FullClassifyTest extends TestCase {
 		System.out.println("NO checkFullClassifyResult(), PROBLEMS WITH EVENTS ?");
 //		checkFullClassifyResult(result, url);
 		assertTrue(result.getTerms().size() == 0);
-		assertTrue(result.getLocations().size() == 0);
+		// no locations anymore ((REDMINE-551) 
+        assertEquals(0, result.getLocations().size());
 		// may have NO EVENTS ? 
 //		assertTrue(result.getEvents().size() > 0);
 		System.out.println("NUMBER OF EVENTS: " + result.getEvents().size());
@@ -80,7 +83,8 @@ public class FullClassifyTest extends TestCase {
 		result = fullClassifyService.autoClassifyText(text, analyzeMaxWords, ignoreCase, null, locale);
 		checkFullClassifyResult(result);
 		assertEquals(12, result.getTerms().size());
-		assertEquals(5, result.getLocations().size());
+		// no locations anymore ((REDMINE-551) 
+		assertEquals(0, result.getLocations().size());
 		assertTrue(result.getEvents().size() > 0);
 
 		// ONLY TERMS
@@ -94,14 +98,16 @@ public class FullClassifyTest extends TestCase {
 		result = fullClassifyService.autoClassifyText(text, analyzeMaxWords, ignoreCase, FilterType.ONLY_LOCATIONS, locale);
 		checkFullClassifyResult(result);
 		assertEquals(0, result.getTerms().size());
-		assertEquals(5, result.getLocations().size());
+		// no locations anymore ((REDMINE-551) 
+        assertEquals(0, result.getLocations().size());
 		assertEquals(0, result.getEvents().size());
 
 		// ONLY EVENTS
 		result = fullClassifyService.autoClassifyText(text, analyzeMaxWords, ignoreCase, FilterType.ONLY_EVENTS, locale);
 		checkFullClassifyResult(result);
 		assertEquals(0, result.getTerms().size());
-		assertEquals(0, result.getLocations().size());
+		// no locations anymore ((REDMINE-551) 
+        assertEquals(0, result.getLocations().size());
 		assertTrue(result.getEvents().size() > 0);
 	}
 	
