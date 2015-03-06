@@ -57,8 +57,8 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 
     	if (log.isInfoEnabled()) {
     		log.info("initializing SNSService, creating SNSClient ! " 
-    				+ "Thesaurus: " + resourceBundle.getString("sns.serviceURL.thesaurus")
-    				+ "Gazetteer: " + resourceBundle.getString("sns.serviceURL.gazetteer")
+    				+ "Thesaurus: " + resourceBundle.getString("sns.serviceURL.thesaurus") + " "
+    				+ "Gazetteer: " + resourceBundle.getString("sns.serviceURL.gazetteer") + " "
     				+ "Chronicle: " + resourceBundle.getString("sns.serviceURL.chronicle"));
     	}
 

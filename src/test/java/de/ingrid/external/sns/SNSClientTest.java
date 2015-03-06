@@ -44,9 +44,9 @@ public class SNSClientTest extends TestCase {
 	}
 	
 	public void testFindEventsAtError() throws Exception { 
-	    //http://iqvoc-chronicle.innoq.com/t7df45747_12f9d9eeddd_-7a46
+	    //http://sns.uba.de/chronik/t7df45747_12f9d9eeddd_-7a46
 	    // get all events by setting date to null
-        Resource eventsRes = snsClient.getTermByUri( "http://iqvoc-chronicle.innoq.com/", "http://iqvoc-chronicle.innoq.com/t7df45747_12f9d9eeddd_-7a46", "de" ); 
+        Resource eventsRes = snsClient.getTermByUri( "http://sns.uba.de/chronik/", "http://sns.uba.de/chronik/t7df45747_12f9d9eeddd_-7a46", "de" ); 
         assertNotNull( eventsRes );
 	}
 	
@@ -116,12 +116,12 @@ public class SNSClientTest extends TestCase {
 	}
 	
 	public void testGetEvent() throws RemoteException {
-		Event e = chronicalService.getEvent("http://iqvoc-chronicle.innoq.com/t2a639eb3_12b99052384_-37ba", new Locale("de"));
+		Event e = chronicalService.getEvent("http://sns.uba.de/chronik/t2a639eb3_12b99052384_-37ba", new Locale("de"));
 		assertEquals(Date.valueOf("2010-10-05"), e.getTimeAt());
 		assertEquals(Date.valueOf("2010-10-05"), e.getTimeRangeFrom());
 		assertEquals(Date.valueOf("2010-10-05"), e.getTimeRangeTo());
 		assertEquals("activity", e.getTypeId());
-		assertEquals("http://iqvoc-chronicle.innoq.com/t2a639eb3_12b99052384_-37ba", e.getId());
+		assertEquals("http://sns.uba.de/chronik/t2a639eb3_12b99052384_-37ba", e.getId());
 		assertEquals(2, e.getLinks().size());
 	}
 	

@@ -502,8 +502,8 @@ public class SNSClient {
     	String uri = url.toString();
 
     	// extract identifier from url to search for it via hierarchy-api
-		pos = uri.indexOf(url.getHost()) + url.getHost().length();
-		String host = uri.substring(0, pos) + "/";
+		//pos = uri.indexOf(url.getHost()) + url.getHost().length();
+		String host = uri;//.substring(0, pos) + "/";
     	
     	// create an empty model
         Model model = ModelFactory.createDefaultModel();

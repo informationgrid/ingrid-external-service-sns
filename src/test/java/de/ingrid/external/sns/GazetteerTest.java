@@ -26,7 +26,7 @@ public class GazetteerTest extends TestCase {
 		Location[] locations;
 
 		// valid location in german, INCLUDE fromLocation
-		String locationId = "http://iqvoc-gazetteer.innoq.com/BERG41128";  // Großer Buchberg
+		String locationId = "http://sns.uba.de/gazetteer/BERG41128";  // Großer Buchberg
 		Locale locale = Locale.GERMAN;
 		locations = gazetteerService.getRelatedLocationsFromLocation(locationId, true, locale);
 		assertEquals(6, locations.length);
@@ -51,18 +51,18 @@ public class GazetteerTest extends TestCase {
 		//assertTrue(locations.length > 0);
 
 		// EXPIRED !!!! INCLUDE fromLocation ! BUT IS REMOVED BECAUSE EXPIRED !!!!
-		locationId = "http://iqvoc-gazetteer.innoq.com/GEMEINDE1515107014"; // Gehrden
+		locationId = "http://sns.uba.de/gazetteer/GEMEINDE1515107014"; // Gehrden
 		locale = Locale.GERMAN;
 		locations = gazetteerService.getRelatedLocationsFromLocation(locationId, true, locale);
 		assertEquals(5, locations.length);
 		for (Location loc : locations) {
 			checkLocation(loc);
-			assertFalse("http://iqvoc-gazetteer.innoq.com/GEMEINDE0325300005".equals(loc.getId()));
+			assertFalse("http://sns.uba.de/gazetteer/GEMEINDE0325300005".equals(loc.getId()));
 			assertFalse(loc.getIsExpired());
 		}
 
 		// valid location in german
-		locationId = "http://iqvoc-gazetteer.innoq.com/NATURPARK31";
+		locationId = "http://sns.uba.de/gazetteer/NATURPARK31";
 		locations = gazetteerService.getRelatedLocationsFromLocation(locationId, true, locale);
 		assertTrue(locations.length > 0);
 
@@ -72,7 +72,7 @@ public class GazetteerTest extends TestCase {
 		//assertTrue(locations.length > 0);
 
 		// INVALID location in german
-		locationId = "http://iqvoc-gazetteer.innoq.com/wrong id";
+		locationId = "http://sns.uba.de/gazetteer/wrong id";
 		locale = Locale.GERMAN;
 		locations = gazetteerService.getRelatedLocationsFromLocation(locationId, true, locale);
 		assertTrue(locations.length == 0);
@@ -87,7 +87,7 @@ public class GazetteerTest extends TestCase {
 		Location location;
 
 		// valid location in german
-		String locationId = "http://iqvoc-gazetteer.innoq.com/BERG41128"; // Großer Buchberg
+		String locationId = "http://sns.uba.de/gazetteer/BERG41128"; // Großer Buchberg
 		Locale locale = Locale.GERMAN;
 		location = gazetteerService.getLocation(locationId, locale);
 		checkLocation(location, locationId, "Gro\u00DFer Buchberg");
@@ -108,14 +108,14 @@ public class GazetteerTest extends TestCase {
 		assertFalse(location.getIsExpired());*/
 
 		// valid location. NOTICE: locale ignored
-		locationId = "http://iqvoc-gazetteer.innoq.com/NATURPARK31"; // Hessischer Spessart
+		locationId = "http://sns.uba.de/gazetteer/NATURPARK31"; // Hessischer Spessart
 		location = gazetteerService.getLocation(locationId, locale);
 		checkLocation(location, locationId, "Hessischer Spessart");
 		assertEquals("Naturpark", location.getTypeName());
 		assertFalse(location.getIsExpired());
 
 		// valid location. NOTICE: locale ignored
-		locationId = "http://iqvoc-gazetteer.innoq.com/GEMEINDE0641200000"; // Frankfurt am Main
+		locationId = "http://sns.uba.de/gazetteer/GEMEINDE0641200000"; // Frankfurt am Main
 		location = gazetteerService.getLocation(locationId, locale);
 		checkLocation(location, locationId, "Frankfurt am Main");
 		assertEquals("Gemeinde", location.getTypeName());
@@ -129,14 +129,14 @@ public class GazetteerTest extends TestCase {
 		assertFalse(location.getIsExpired());
 
 		// EXPIRED LOCATION !
-		locationId = "http://iqvoc-gazetteer.innoq.com/GEMEINDE1510100000"; // Dessau
+		locationId = "http://sns.uba.de/gazetteer/GEMEINDE1510100000"; // Dessau
 		location = gazetteerService.getLocation(locationId, locale);
 		checkLocation(location, locationId, "Dessau");
 		assertTrue(location.getIsExpired());
 		// TODO: successor is "Dessau-Roßlau"!
 
 		// INVALID location
-		locationId = "http://iqvoc-gazetteer.innoq.com/wrong-id";
+		locationId = "http://sns.uba.de/gazetteer/wrong-id";
 		locale = Locale.GERMAN;
 		location = gazetteerService.getLocation(locationId, locale);
 		assertNull(location);
@@ -155,13 +155,13 @@ public class GazetteerTest extends TestCase {
 		assertTrue(locations.length > 0);
 		Location checkLocation = null;
 		for (Location location : locations) {
-		    if ("http://iqvoc-gazetteer.innoq.com/GEMEINDE1607103082".equals( location.getId() ) ) {
+		    if ("http://sns.uba.de/gazetteer/GEMEINDE1607103082".equals( location.getId() ) ) {
 		        checkLocation = location;
 		        break;
 		    }
         }
 		assertNotNull( checkLocation );
-		assertEquals( "http://iqvoc-gazetteer.innoq.com/GEMEINDE1607103082", checkLocation.getId() );
+		assertEquals( "http://sns.uba.de/gazetteer/GEMEINDE1607103082", checkLocation.getId() );
 		assertEquals( "-location-admin-use6-", checkLocation.getTypeId() );
 		assertEquals( "16071082", checkLocation.getNativeKey() );
 
@@ -276,15 +276,15 @@ public class GazetteerTest extends TestCase {
 	}
 	
 	public final void testGetSuccessorFromExpired() {
-        Location location = gazetteerService.getLocation( "http://iqvoc-gazetteer.innoq.com/GEMEINDE1510100000", new Locale("de") );
+        Location location = gazetteerService.getLocation( "http://sns.uba.de/gazetteer/GEMEINDE1510100000", new Locale("de") );
         assertTrue( location.getIsExpired() );
         assertEquals( "2012-11-28", location.getExpiredDate() );
         assertEquals( 1, location.getSuccessorIds().length );
-        assertEquals( "http://iqvoc-gazetteer.innoq.com/_4e9d66f0-1b80-0130-d0e8-482a1437a069", location.getSuccessorIds()[0] );
+        assertEquals( "http://sns.uba.de/gazetteer/_4e9d66f0-1b80-0130-d0e8-482a1437a069", location.getSuccessorIds()[0] );
 	}
 	
 	public final void testCheckTextEncoding() {
-		Location location = gazetteerService.getLocation( "http://iqvoc-gazetteer.innoq.com/BIOSPHAERE3", new Locale("de") );
+		Location location = gazetteerService.getLocation( "http://sns.uba.de/gazetteer/BIOSPHAERE3", new Locale("de") );
 		assertEquals( "Biosphärenreservat", location.getTypeName() );
 	}
 
