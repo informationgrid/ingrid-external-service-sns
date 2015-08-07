@@ -229,8 +229,9 @@ public class SNSMapper {
     	float[] points = RDFUtils.getBoundingBox(topic);
     	if (points != null) {
     		// if bounding box is a coordinate then use same coordinate again
+    	    // FIXME: bounding box for points has wrong order (https://github.com/innoq/iqvoc_gazetteer/issues/14)
 	    	if (points.length == 2)
-	    		outLocation.setBoundingBox(points[0], points[1], points[0], points[1]);
+	    		outLocation.setBoundingBox(points[1], points[0], points[1], points[0]);
 	    	else if (points.length == 4)
 	    		outLocation.setBoundingBox(points[0], points[1], points[2], points[3]);
     	}
