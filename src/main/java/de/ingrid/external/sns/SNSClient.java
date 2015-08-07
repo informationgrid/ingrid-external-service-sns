@@ -39,10 +39,6 @@ public class SNSClient {
 
 	public static final int PAGE_START = 1;
 
-    private String fUserName;
-
-    private String fPassword;
-
     private String fLanguage;
 
 	private URL fUrlThesaurus;
@@ -78,8 +74,6 @@ public class SNSClient {
      * @throws Exception
      */
     public SNSClient(String userName, String password, String language, URL urlThesaurus, URL urlGazetteer, URL urlChronicle) throws Exception {
-        this.fUserName = userName;
-        this.fPassword = password;
         this.fLanguage = language;
         this.fUrlThesaurus = urlThesaurus;
         this.fUrlGazetteer = urlGazetteer;
@@ -177,7 +171,7 @@ public class SNSClient {
 
         int pos = termId.lastIndexOf('/')+1;
         String type = determineType(termId);
-        String query = uri + lang + type + termId.substring(pos).trim() + ".rdf";
+        String query = HtmlUtils.prepareUrl( uri ) + lang + type + termId.substring(pos).trim() + ".rdf";
         
         if (log.isDebugEnabled()) {
             log.debug( "Fetching term from: " + query );
@@ -325,14 +319,15 @@ public class SNSClient {
     }
 
     private String getUrlByFilter(FilterType type) {
+        String uri = null;
 		if (type == FilterType.ONLY_TERMS)
-			return this.fUrlThesaurus.toString();
+			uri = this.fUrlThesaurus.toString();
 		else if (type == FilterType.ONLY_LOCATIONS)
-			return this.fUrlGazetteer.toString();
+		    uri = this.fUrlGazetteer.toString();
 		else if (type == FilterType.ONLY_EVENTS)
-			return this.fUrlChronicle.toString();
+			uri = this.fUrlChronicle.toString();
 		
-		return null;
+		return HtmlUtils.prepareUrl(uri);
 	}
 
 	/**
@@ -407,8 +402,8 @@ public class SNSClient {
     	// TODO: use t=notes instead of t=pref_labels to get more search results
     	// however an error occurred when doing so (06.05.2014) 
     	String params = "?t=notes&qt="+searchType+"&q=" + queryParam + "&date_min=" + from + 
-    			"&date_max=" + to + collParams + "&l=" + "de" + "&page="+offset;
-        String query = this.fUrlChronicle.toString() + "search.rdf" + params;
+    			"&date_max=" + to + collParams + "&l=" + "de" + "&page="+offset + "&for=concept";
+        String query = getUrlByFilter( FilterType.ONLY_EVENTS ) + "search.rdf" + params;
         
         if (log.isDebugEnabled()) {
             log.debug( "Searching for Events with: " + query );
@@ -445,7 +440,7 @@ public class SNSClient {
     	// create an empty model
         Model model = ModelFactory.createDefaultModel();
 
-        String query = this.fUrlChronicle.toString() + lang + "/anniversary.rdf?date=" + date;
+        String query = getUrlByFilter( FilterType.ONLY_EVENTS ) + lang + "/anniversary.rdf?date=" + date;
         
         if (log.isDebugEnabled()) {
             log.debug( "Getting anniversary from: " + query );
@@ -498,12 +493,8 @@ public class SNSClient {
     public Resource getHierachy(URL url, long depth, String direction, boolean includeSiblings,
             String lang, String root) throws RemoteException {
     	
-    	int pos;
-    	String uri = url.toString();
-
-    	// extract identifier from url to search for it via hierarchy-api
-		//pos = uri.indexOf(url.getHost()) + url.getHost().length();
-		String host = uri;//.substring(0, pos) + "/";
+    	String uri = HtmlUtils.prepareUrl( url.toString() );
+		String host = uri;
     	
     	// create an empty model
         Model model = ModelFactory.createDefaultModel();
@@ -545,7 +536,7 @@ public class SNSClient {
 			paramTerms += term + "+";
 		}
         paramTerms = paramTerms.substring(0, paramTerms.length()-1);
-        String query = this.fUrlThesaurus.toString() + lang + "/similar.rdf?terms=" + paramTerms;
+        String query = getUrlByFilter( FilterType.ONLY_TERMS ) + lang + "/similar.rdf?terms=" + paramTerms;
 
         if (log.isDebugEnabled()) {
             log.debug( "Getting similar terms from: " + query );

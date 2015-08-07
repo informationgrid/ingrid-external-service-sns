@@ -20,6 +20,7 @@ public class RDFUtils {
 		if (node == null) node = getObject(res, "skosxl", "prefLabel", lang);
 		if (node == null) node = getObject(res, "skos", "officialName", lang);
 		if (node == null) node = getObject(res, "http://www.geonames.org/ontology", "officialName", lang);
+		if (node == null) node = getObject(res, "skos", "altLabel", lang);
 		// for autoclassify results
 		if (node == null) node = getObject(res, "dct", "title");
 		

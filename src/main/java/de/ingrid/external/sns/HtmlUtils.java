@@ -26,11 +26,10 @@ public class HtmlUtils {
     }
 
 	public static String prepareUrl(String url) {
-		int pos = url.lastIndexOf('/');
-		if (pos != url.length()) {
+	    if (url.endsWith( "/" )) 
+	        return url;
+	    else 
 			return url + "/";
-		}
-		return url;
 	}
 }
 
