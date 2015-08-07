@@ -14,6 +14,7 @@
   <scm>
     <connection>scm:git:git@github.com:informationgrid/ingrid-external-service-sns.git</connection>
     <developerConnection>scm:git:git@github.com:informationgrid/ingrid-external-service-sns.git</developerConnection>
+    <tag>HEAD</tag>
   </scm>
   <dependencyManagement>
     <dependencies>
@@ -40,6 +41,7 @@
     <!-- <dependency>
       <groupId>uba</groupId>
       <artifactId>xtmStubs</artifactId>
+      <version>3.0.0.1</version>
     </dependency> -->
     <!-- JENA libs for RDF support -->
     <dependency>
