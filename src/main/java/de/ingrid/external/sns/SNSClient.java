@@ -27,26 +27,21 @@
  */
 package de.ingrid.external.sns;
 
-import java.math.BigInteger;
+import java.io.FileNotFoundException;
+import java.io.OutputStreamWriter;
+import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.rmi.RemoteException;
 
 import org.apache.log4j.Logger;
 
-import com.slb.taxi.webservice.xtm.stubs.Anniversary;
-import com.slb.taxi.webservice.xtm.stubs.AutoClassify;
-import com.slb.taxi.webservice.xtm.stubs.FieldsType;
-import com.slb.taxi.webservice.xtm.stubs.FindEvents;
-import com.slb.taxi.webservice.xtm.stubs.FindTopics;
-import com.slb.taxi.webservice.xtm.stubs.GetHierarchy;
-import com.slb.taxi.webservice.xtm.stubs.GetPSI;
-import com.slb.taxi.webservice.xtm.stubs.GetSimilarTerms;
-import com.slb.taxi.webservice.xtm.stubs.GetTypes;
-import com.slb.taxi.webservice.xtm.stubs.HttpSoapBindingStub;
-import com.slb.taxi.webservice.xtm.stubs.SearchType;
-import com.slb.taxi.webservice.xtm.stubs.TopicMapFragment;
-import com.slb.taxi.webservice.xtm.stubs.XTMESoapPortType;
-import com.slb.taxi.webservice.xtm.stubs.XTMserviceLocator;
+import com.hp.hpl.jena.rdf.model.Model;
+import com.hp.hpl.jena.rdf.model.ModelFactory;
+import com.hp.hpl.jena.rdf.model.Resource;
+import com.hp.hpl.jena.shared.DoesNotExistException;
+
+import de.ingrid.external.FullClassifyService.FilterType;
 
 /**
  * Adapter which provides the access to the sns webservice.
@@ -59,6 +54,12 @@ import com.slb.taxi.webservice.xtm.stubs.XTMserviceLocator;
 public class SNSClient {
 
 	private final static Logger log = Logger.getLogger(SNSClient.class);	
+	
+	public static final int MAX_HIERARCHY_DEPTH = 4;
+	
+	public static final int NUM_SEARCH_RESULTS = 40;
+
+	public static final int PAGE_START = 1;
 
     private String fUserName;
 
@@ -66,9 +67,10 @@ public class SNSClient {
 
     private String fLanguage;
 
-    private XTMESoapPortType fXtmSoapPortType;
+	private URL fUrlThesaurus;
+	private URL fUrlGazetteer;
+	private URL fUrlChronicle;
 
-    private HttpSoapBindingStub fSoapBinding;
 
     /**
      * Constructs an instance by using the given parameters.
@@ -82,7 +84,7 @@ public class SNSClient {
      * @throws Exception
      */
     public SNSClient(String userName, String password, String language) throws Exception {
-        this(userName, password, language, null);
+        this(userName, password, language, null, null, null);
     }
 
     /**
@@ -97,17 +99,13 @@ public class SNSClient {
      * @param url
      * @throws Exception
      */
-    public SNSClient(String userName, String password, String language, URL url) throws Exception {
+    public SNSClient(String userName, String password, String language, URL urlThesaurus, URL urlGazetteer, URL urlChronicle) throws Exception {
         this.fUserName = userName;
         this.fPassword = password;
         this.fLanguage = language;
-        if (url == null) {
-            this.fXtmSoapPortType = new XTMserviceLocator().getXTMSoapPort();
-            this.fSoapBinding = (HttpSoapBindingStub) this.fXtmSoapPortType;
-        } else {
-            this.fXtmSoapPortType = new XTMserviceLocator().getXTMSoapPort(url);
-            this.fSoapBinding = (HttpSoapBindingStub) this.fXtmSoapPortType;
-        }
+        this.fUrlThesaurus = urlThesaurus;
+        this.fUrlGazetteer = urlGazetteer;
+        this.fUrlChronicle = urlChronicle;
     }
 
     /**
@@ -133,68 +131,107 @@ public class SNSClient {
      * @see SearchType
      * @see FieldsType
      */
-    public synchronized TopicMapFragment findTopics(String queryTerm, String path, SearchType searchType,
-            FieldsType fieldsType, long offset, long pageSize, String lang, boolean includeUse) throws Exception {
-        if (queryTerm == null) {
+    public synchronized Resource findTopics(String queryTerm, FilterType type, String searchType,
+    		String fieldsType, long offset, long pageSize, String lang, boolean includeUse) throws Exception {
+    	return findTopics(null, queryTerm, type, searchType, fieldsType, offset, pageSize, lang, includeUse);
+    }
+    
+    public synchronized Resource findTopics(String url, String queryTerm, FilterType type, String searchType,
+            String fieldsType, long offset, long pageSize, String lang, boolean includeUse) throws Exception {
+    	
+    	if (queryTerm == null) {
             throw new IllegalArgumentException("QueryTerm can not be null");
+        }
+    	if (type == null) {
+            throw new IllegalArgumentException("FilterType can not be null");
         }
         if (offset < 0) {
             throw new IllegalArgumentException("Offset can not be lower than 0");
         }
-        FindTopics topicRequest = new FindTopics();
-        topicRequest.setUser(this.fUserName);
-        topicRequest.setPassword(this.fPassword);
-        topicRequest.setLang(lang);
-        topicRequest.setPath(path);
-        topicRequest.setSearchType(searchType);
-        topicRequest.setFields(fieldsType);
-        topicRequest.setOffset(BigInteger.valueOf(offset));
-        topicRequest.setPageSize(BigInteger.valueOf(pageSize));
-        topicRequest.setQueryTerm(queryTerm);
-        if (includeUse) {
-            topicRequest.setIncludeUse("true");
-        } else {
-            topicRequest.setIncludeUse("false");
+    	
+    	// create an empty model
+        Model model = ModelFactory.createDefaultModel();
+        String query = null;
+        // encode parameter
+        queryTerm = URLEncoder.encode(queryTerm, "utf8");
+        String params = "t=labels&qt="+searchType+"&q=" + queryTerm + "&l=" + lang + "&page=" + offset;
+        
+        String host = (url == null) ? getUrlByFilter(type) : HtmlUtils.prepareUrl(url);
+       	query = host + "search.rdf?" + params;
+       	
+       	if (log.isDebugEnabled()) {
+            log.debug( "Searching by: " + query );
+        }
+        
+        try {
+        	// read the RDF/XML file
+        	model.read(query);
+        } catch (DoesNotExistException e) {
+        	log.error("The search-function does not exist: " + query);
+        	return null;
+        } catch (Exception e) {
+        	log.error("The URI seems to have a problem: " + query);
+        	return null;
         }
 
-        return this.fXtmSoapPortType.findTopicsOp(topicRequest);
+        // write it to standard out
+        if (log.isDebugEnabled()) {
+            model.write(System.out);
+        }
+        
+        return model.getResource(query);
     }
 
-    /**
-     * Sends a getPSI request by using the underlying webservice client. All parameters will passed to the _getPSI
-     * request object.
-     * 
-     * @param topicID
-     *            Current topic ID.
-     * @param distance
-     *            The distance-Parameter isn't used. Source: Interface-Spec. version 0.6.
-     * @param filter
-     *            Define filter for limit to a topic.
-     * @return The response object.
-     * @throws Exception
-     */
-    public synchronized TopicMapFragment getPSI(String topicID, int distance, String filter) throws Exception {
-        if (topicID == null) {
-            throw new IllegalArgumentException("TopicID can not be null");
+    public synchronized Resource getTerm(String termId, String lang, FilterType type) {
+        if (type == null) {
+            throw new IllegalArgumentException("FilterType can not be null");
         }
-        if (distance < 0 || distance > 3) {
-            throw new IllegalArgumentException("Distance must have a value between 0 and 3");
+   		return getTermByUri(getUrlByFilter(type), termId, lang);
+    }
+    
+    public synchronized Resource getTermByUri(String uri, String termId, String lang) {
+    
+    	if (termId == null) {
+    		throw new IllegalArgumentException("The ID must not be null!");
+    	}
+    	// create an empty model
+        Model model = ModelFactory.createDefaultModel();
+
+        int pos = termId.lastIndexOf('/')+1;
+        String type = determineType(termId);
+        String query = uri + lang + type + termId.substring(pos).trim() + ".rdf";
+        
+        if (log.isDebugEnabled()) {
+            log.debug( "Fetching term from: " + query );
         }
 
-        GetPSI psiRequest = new GetPSI();
-        psiRequest.setUser(this.fUserName);
-        psiRequest.setPassword(this.fPassword);
-        // The distance-Parameter isn't used. Source: Interface-Spec. version 0.6.
-        psiRequest.setDistance(BigInteger.valueOf(distance));
-        psiRequest.setId(topicID);
-        if (null != filter) {
-            psiRequest.setFilter(filter);
+        try {
+        	// read the RDF/XML file
+        	model.read(query);
+        } catch (DoesNotExistException e) {
+        	log.error("The term does not exist: " + query);
+        	return null;
+        } catch (Exception e) {
+        	log.error("The URI seems to have a problem: " + query);
+        	return null;
         }
 
-        return this.fXtmSoapPortType.getPSIOp(psiRequest);
+        // write it to standard out
+        // throws error!
+        /*if (log.isDebugEnabled()) {
+            model.write(System.out);
+        }*/
+        
+        return model.getResource(termId);
     }
 
-    /**
+    private String determineType(String termId) {
+		//if (termId.indexOf("/collections/") != -1)
+		//	return "/collections/";
+		return "/concepts/";
+	}
+
+	/**
      * Sends a autoClassify request by using the underlying webservice client.<br>
      * All parameters will passed to a _autoClassify request object.
      * 
@@ -202,7 +239,7 @@ public class SNSClient {
      *            The text to analyze.
      * @param analyzeMaxWords
      *            The maximal number of words to analyze for a document.
-     * @param filter
+     * @param type
      *            Define filter for limit to a topic.
      * @param ignoreCase
      *            Set to true ignore capitalization of the document.
@@ -211,33 +248,49 @@ public class SNSClient {
      * @return A topic map fragment.
      * @throws Exception
      */
-    public synchronized TopicMapFragment autoClassify(String document, int analyzeMaxWords, String filter,
+    public synchronized Resource autoClassify(String document, int analyzeMaxWords, FilterType type,
             boolean ignoreCase, String lang) throws Exception {
         if (document == null) {
             throw new IllegalArgumentException("document can not be null");
+        }
+        if (type == null) {
+            throw new IllegalArgumentException("FilterType can not be null");
         }
         if (analyzeMaxWords < 0) {
             throw new IllegalArgumentException("AnalyzeMaxWords can not be lower than 0");
         }
 
-        AutoClassify classifyRequest = new AutoClassify();
-        classifyRequest.setUser(this.fUserName);
-        classifyRequest.setPassword(this.fPassword);
-        if (lang != null) {
-            classifyRequest.setLang(lang);
+        // open a connection to the target url
+        String query = getUrlByFilter(type) + lang + "/autoclassify/plain.rdf";
+        URL url = new URL(query);
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();           
+        connection.setDoOutput(true); 
+        connection.setInstanceFollowRedirects(false); 
+        connection.setRequestMethod("POST"); 
+        connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded"); 
+        connection.setRequestProperty("charset", "utf-8");
+        connection.connect();
+        
+        // send the document data to analyze
+        OutputStreamWriter writer = new OutputStreamWriter(connection.getOutputStream());
+        String content = "content=" + document;
+        writer.write(content);
+        writer.flush();
+        
+        // read the response into the model
+        Model model = ModelFactory.createDefaultModel();
+        try {
+            model.read(connection.getInputStream(), null);
+        } catch (FileNotFoundException e) {
+            log.warn("The autoClassify-Service for type: " + type + " seems not to be available: " + e.getMessage());
+            return null;
         }
-        classifyRequest.setDocument(document);
-        classifyRequest.setAnalyzeMaxWords("" + analyzeMaxWords);
-        if (ignoreCase) {
-            classifyRequest.setIgnoreCase("true");
-        } else {
-            classifyRequest.setIgnoreCase("false");
+        
+        if (log.isDebugEnabled()) {
+            model.write(System.out);
         }
-        if (null != filter) {
-            classifyRequest.setFilter(filter);
-        }
-
-        return this.fXtmSoapPortType.autoClassifyOp(classifyRequest);
+        
+        return model.getResource(query);
     }
 
     /**
@@ -257,61 +310,58 @@ public class SNSClient {
      * @return A topic map fragment.
      * @throws Exception
      */
-    public synchronized TopicMapFragment autoClassifyToUrl(String url, int analyzeMaxWords, String filter,
-            boolean ignoreCase, String lang) throws Exception {
+    public synchronized Resource autoClassifyToUrl(String url, FilterType type, String lang) throws Exception {
         if (url == null) {
             throw new IllegalArgumentException("Url can not be null");
         }
-        if (analyzeMaxWords < 0) {
-            throw new IllegalArgumentException("AnalyzeMaxWords can not be lower than 0");
+        if (type == null) {
+            throw new IllegalArgumentException("FilterType can not be null");
         }
 
-        AutoClassify classifyRequest = new AutoClassify();
-        classifyRequest.setUser(this.fUserName);
-        classifyRequest.setPassword(this.fPassword);
-        if (lang != null) {
-            classifyRequest.setLang(lang);
-        }
-        classifyRequest.setUrl(url);
-        classifyRequest.setAnalyzeMaxWords("" + analyzeMaxWords);
-        if (ignoreCase) {
-            classifyRequest.setIgnoreCase("true");
-        } else {
-            classifyRequest.setIgnoreCase("false");
-        }
-        if (null != filter) {
-            classifyRequest.setFilter(filter);
+        Model model = ModelFactory.createDefaultModel();
+
+        String params = "/autoclassify/extract.rdf?uri=" + url;
+        String query = getUrlByFilter(type) + lang + params;
+        
+        if (log.isDebugEnabled()) {
+            log.debug( "AutoClassify by: " + query );
         }
 
-        return this.fXtmSoapPortType.autoClassifyOp(classifyRequest);
+        try {
+        	// read the RDF/XML file
+        	model.read(query);
+        } catch (DoesNotExistException e) {
+        	log.error("The autoclassify-function does not exist: " + query);
+        	return null;
+        } catch (Exception e) {
+        	log.error("The URI seems to have a problem: " + query);
+        	return null;
+        }
+
+        // write it to standard out
+        if (log.isDebugEnabled()) {
+            model.write(System.out);
+        }
+        
+        return model.getResource(query);
     }
 
-    /**
-     * Sets user name and password for a topic map fragment.
-     * 
-     * @return A topic map fragment.
-     * @throws RemoteException
-     */
-    public synchronized TopicMapFragment getTypes() throws RemoteException {
-        GetTypes typeRequest = new GetTypes();
-        typeRequest.setUser(this.fUserName);
-        typeRequest.setPassword(this.fPassword);
+    private String getUrlByFilter(FilterType type) {
+		if (type == FilterType.ONLY_TERMS)
+			return this.fUrlThesaurus.toString();
+		else if (type == FilterType.ONLY_LOCATIONS)
+			return this.fUrlGazetteer.toString();
+		else if (type == FilterType.ONLY_EVENTS)
+			return this.fUrlChronicle.toString();
+		
+		return null;
+	}
 
-        return this.fXtmSoapPortType.getTypesOp(typeRequest);
-    }
-
-    /**
+	/**
      * Search the environment chronicles bases on findTopicslimits his however on the event types and extends the search
      * conditions by a time range or date.
-     * 
-     * @param query
-     *            The Query.
-     * @param ignoreCase
-     *            Set to true ignore capitalization of the document.
      * @param searchType
      *            Can be one of the provided <code>SearchType</code>s.
-     * @param pathArray
-     *            Array of paths for a topic type as search criterion.
      * @param fieldsType
      *            Can be one of the provided <code>FieldsType</code>s.
      * @param offset
@@ -322,62 +372,29 @@ public class SNSClient {
      *            Is used to specify the preferred language for requests.
      * @param length
      *            Number of elements that should be retrieved.
+     * @param query
+     *            The Query.
+     * @param pathArray
+     *            Array of paths for a topic type as search criterion.
+     * 
      * @return A topic map fragment.
      * @throws RemoteException
      * @see SearchType
      * @see FieldsType
      */
-    public synchronized TopicMapFragment findEvents(String query, boolean ignoreCase, SearchType searchType,
-            String[] pathArray, FieldsType fieldsType, long offset, String at, String lang, int length)
+    public synchronized Resource findEvents(String queryParam, String searchType, String fieldsType,
+            long offset, String at, String lang, int length)
             throws RemoteException {
-        if (log.isDebugEnabled()) {
-            log.debug("findEvents: term=" + query + ", ignoreCase=" + ignoreCase +
-            		", atDate=" + at +
-            		", searchType=" + searchType + ", eventPath= " + pathArray +
-            		", lang=" + lang);
-        }
-
-        FindEvents findEvents = new FindEvents();
-        findEvents.setUser(this.fUserName);
-        findEvents.setPassword(this.fPassword);
-        findEvents.setQueryTerm(query);
-
-        if (ignoreCase) {
-            findEvents.setIgnoreCase("true");
-        } else {
-            findEvents.setIgnoreCase("false");
-        }
-        findEvents.setSearchType(searchType);
-        findEvents.setLang(lang);
-        findEvents.setPath(pathArray);
-        // no fields type when looking for events !
-        // from manual: "Falls mit path=/event gesucht wird, wird ohne Übergabe von fields auch
-        // die Ereignisbeschreibung (description) durchsucht."
-        //findEvents.setFields(fieldsType);
-        findEvents.setOffset(BigInteger.valueOf(offset));
-        findEvents.setPageSize(BigInteger.valueOf(length));
-        // from manual: "Wird gar keine Zeitangabe übergeben, werden die anderen Suchbedingungen ohne 
-        // zeitliche Einschränkung ausgewertet."
-        if (at != null) {
-            findEvents.setAt(at);        	
-        }
-
-        return this.fXtmSoapPortType.findEventsOp(findEvents);
+    	
+    	return findEvents(queryParam, searchType, fieldsType, offset, at, at, lang, length);
     }
 
     /**
      * The request findEvents bases on findTopics, limits his however on the event types and extends the search
      * conditions by a time range or date.
-     * 
-     * @param query
-     *            The Que
-     * @param ignoreCase
-     *            Set to true ignore capitalization of the document.
      * @param searchType
      *            Can be one of the provided <code>SearchType</code>s.
-     * @param pathArray
-     *            Array of paths for a topic type as search criterion.
-     * @param fieldsType
+     * @param inCollections
      *            Can be one of the provided <code>FieldsType</code>s.
      * @param offset
      *            Defines the number of topics to skip.
@@ -389,49 +406,53 @@ public class SNSClient {
      *            Is used to specify the preferred language for requests.
      * @param length
      *            Number of elements that should be retrieved.
+     * @param query
+     *            The Query
+     * @param pathArray
+     *            Array of paths for a topic type as search criterion.
+     * 
      * @return A topic map fragment.
      * @throws RemoteException
      * @see SearchType
      * @see FieldsType
      */
-    public synchronized TopicMapFragment findEvents(String query, boolean ignoreCase, SearchType searchType,
-            String[] pathArray, FieldsType fieldsType, long offset, String from, String to, String lang, int length)
+    public synchronized Resource findEvents(String queryParam, String searchType, String inCollection,
+            long offset, String from, String to, String lang, int length)
             throws RemoteException {
+    	
+    	Model model = ModelFactory.createDefaultModel();
+    	
+    	if (from == null) from = "";
+    	if (to   == null) to   = "";
+    	
+    	String collParams = (inCollection == null || "".equals(inCollection)) ? "" : "&c=" + inCollection;
+    	// TODO: use t=notes instead of t=pref_labels to get more search results
+    	// however an error occurred when doing so (06.05.2014) 
+    	String params = "?t=notes&qt="+searchType+"&q=" + queryParam + "&date_min=" + from + 
+    			"&date_max=" + to + collParams + "&l=" + "de" + "&page="+offset;
+        String query = this.fUrlChronicle.toString() + "search.rdf" + params;
+        
         if (log.isDebugEnabled()) {
-            log.debug("findEvents: term=" + query + ", ignoreCase=" + ignoreCase +
-            		", fromDate=" + from + ", toDate=" + to +
-            		", searchType=" + searchType + ", eventPath= " + pathArray +
-            		", lang=" + lang);
+            log.debug( "Searching for Events with: " + query );
         }
 
-        FindEvents findEvents = new FindEvents();
-        findEvents.setUser(this.fUserName);
-        findEvents.setPassword(this.fPassword);
-        findEvents.setQueryTerm(query);
-        if (ignoreCase) {
-            findEvents.setIgnoreCase("true");
-        } else {
-            findEvents.setIgnoreCase("false");
-        }
-        findEvents.setSearchType(searchType);
-        findEvents.setLang(lang);
-        findEvents.setPath(pathArray);
-        // no fields type when looking for events !
-        // from manual: "Falls mit path=/event gesucht wird, wird ohne Übergabe von fields auch
-        // die Ereignisbeschreibung (description) durchsucht."
-        // findEvents.setFields(fieldsType);
-        findEvents.setOffset(BigInteger.valueOf(offset));
-        findEvents.setPageSize(BigInteger.valueOf(length));
-        // from manual: "Wird gar keine Zeitangabe übergeben, werden die anderen Suchbedingungen ohne 
-        // zeitliche Einschränkung ausgewertet."
-        if (from != null) {
-            findEvents.setFrom(from);        	
-        }
-        if (to != null) {
-            findEvents.setTo(to);        	
+        try {
+        	// read the RDF/XML file
+        	model.read(query);
+        } catch (DoesNotExistException e) {
+        	log.error("The search-function does not exist: " + query);
+        	return null;
+        } catch (Exception e) {
+        	log.error("The URI seems to have a problem: " + query);
+        	return null;
         }
 
-        return this.fXtmSoapPortType.findEventsOp(findEvents);
+        // write it to standard out
+        if (log.isDebugEnabled()) {
+            model.write(System.out);
+        }
+        
+        return model.getResource(query);
     }
 
     /**
@@ -442,17 +463,40 @@ public class SNSClient {
      * @return A topic map fragment.
      * @throws RemoteException
      */
-    public synchronized TopicMapFragment anniversary(String date) throws RemoteException {
-        if (null == date) {
-            throw new IllegalArgumentException("Date must be set.");
+    public synchronized Resource anniversary(String date, String lang) throws RemoteException {
+    	// create an empty model
+        Model model = ModelFactory.createDefaultModel();
+
+        String query = this.fUrlChronicle.toString() + lang + "/anniversary.rdf?date=" + date;
+        
+        if (log.isDebugEnabled()) {
+            log.debug( "Getting anniversary from: " + query );
         }
 
-        Anniversary anniversary = new Anniversary();
-        anniversary.setUser(this.fUserName);
-        anniversary.setPassword(this.fPassword);
-        anniversary.setRefDate(date);
+        try {
+        	// read the RDF/XML file
+        	model.read(query);
+        } catch (DoesNotExistException e) {
+        	log.error("The anniversary-function does not exist: " + query);
+        	return null;
+        } catch (Exception e) {
+        	log.error("The URI seems to have a problem: " + query);
+        	return null;
+        }
 
-        return this.fXtmSoapPortType.anniversaryOp(anniversary);
+        // write it to standard out
+        // throws error!
+        /*if (log.isDebugEnabled()) {
+            model.write(System.out);
+        }*/
+        
+        return model.getResource(query);
+    }
+    
+    
+    public Resource getHierachy(long depth, String direction, boolean includeSiblings,
+            String lang, String root) throws RemoteException {
+    	return getHierachy(this.fUrlThesaurus, depth, direction, includeSiblings, lang, root);
     }
 
     /**
@@ -473,19 +517,25 @@ public class SNSClient {
      * @return The requestet hierachical notion.
      * @throws RemoteException
      */
-    public TopicMapFragment getHierachy(String association, long depth, String direction, boolean includeSiblings,
+    public Resource getHierachy(URL url, long depth, String direction, boolean includeSiblings,
             String lang, String root) throws RemoteException {
-        GetHierarchy hierarchy = new GetHierarchy();
-        hierarchy.setAssociation(association);
-        hierarchy.setDepth(BigInteger.valueOf(depth));
-        hierarchy.setDirection(direction);
-        hierarchy.setIncludeSiblings(Boolean.valueOf(includeSiblings));
-        hierarchy.setLang(lang);
-        hierarchy.setRoot(root);
-        hierarchy.setUser(this.fUserName);
-        hierarchy.setPassword(this.fPassword);
+    	
+    	int pos;
+    	String uri = url.toString();
 
-        return this.fXtmSoapPortType.getHierarchyOp(hierarchy);
+    	// extract identifier from url to search for it via hierarchy-api
+		pos = uri.indexOf(url.getHost()) + url.getHost().length();
+		String host = uri.substring(0, pos) + "/";
+    	
+    	// create an empty model
+        Model model = ModelFactory.createDefaultModel();
+    	String params = "?dir=" + direction + "&siblings=" + includeSiblings;
+    	if (depth != -1) params += "&depth=" + depth; 
+    	if (includeSiblings) params += "&siblings="+includeSiblings;
+    	
+    	String doc = root.substring(root.lastIndexOf("/")+1);
+        Model hierarchy = model.read(host+lang+"/hierarchy/" + doc + ".rdf" + params);
+		return hierarchy.getResource(host+doc);
     }
 
     /**
@@ -502,24 +552,44 @@ public class SNSClient {
      * @return A topic map fragment.
      * @throws RemoteException
      */
-    public synchronized TopicMapFragment getSimilarTerms(boolean ignoreCase, String[] terms, String lang)
-            throws RemoteException {
-        if ((null == terms) || (terms.length < 1)) {
+    public synchronized Resource getSimilarTerms(boolean ignoreCase, String[] terms, String lang) {
+    	
+    	if ((null == terms) || (terms.length < 1)) {
             throw new IllegalArgumentException("No terms set.");
         }
+    	
+    	// create an empty model
+        Model model = ModelFactory.createDefaultModel();
 
-        GetSimilarTerms getSimilarTerms = new GetSimilarTerms();
-        getSimilarTerms.setUser(this.fUserName);
-        getSimilarTerms.setPassword(this.fPassword);
-        getSimilarTerms.setLang(lang);
-        if (ignoreCase) {
-            getSimilarTerms.setIgnoreCase("true");
-        } else {
-            getSimilarTerms.setIgnoreCase("false");
+        // prepare terms as url-parameter
+        String paramTerms = "";
+        for (String term : terms) {
+			paramTerms += term + "+";
+		}
+        paramTerms = paramTerms.substring(0, paramTerms.length()-1);
+        String query = this.fUrlThesaurus.toString() + lang + "/similar.rdf?terms=" + paramTerms;
+
+        if (log.isDebugEnabled()) {
+            log.debug( "Getting similar terms from: " + query );
         }
-        getSimilarTerms.setTerm(terms);
+        
+        try {
+        	// read the RDF/XML file
+        	model.read(query);
+        } catch (DoesNotExistException e) {
+        	log.error("The search-function does not exist: " + query);
+        	return null;
+        } catch (Exception e) {
+        	log.error("The URI seems to have a problem: " + query);
+        	return null;
+        }
 
-        return this.fXtmSoapPortType.getSimilarTermsOp(getSimilarTerms);
+        // write it to standard out
+        if (log.isDebugEnabled()) {
+            model.write(System.out);
+        }
+        
+        return model.getResource(query + "#top");
     }
 
     /**
@@ -529,7 +599,7 @@ public class SNSClient {
      *            Timeout in milliseconds.
      */
     public void setTimeout(final int timeout) {
-        this.fSoapBinding.setTimeout(timeout);
+        //this.fSoapBinding.setTimeout(timeout);
     }
 
     /**
