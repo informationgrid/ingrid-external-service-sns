@@ -61,6 +61,19 @@
       <version>4.11</version>
     </dependency>
   </dependencies>
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>external.atlassian.jgitflow</groupId>
+        <artifactId>jgitflow-maven-plugin</artifactId>
+        <version>1.0-m5.1</version>
+        <configuration>
+          <defaultOriginUrl>https://github.com/informationgrid/ingrid-external-service-sns</defaultOriginUrl>
+          <noReleaseBuild>true</noReleaseBuild>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
   <!-- NEVER DELETE: InGrid repo needed for download of base pom if not present ! -->
   <repositories>
     <repository>
