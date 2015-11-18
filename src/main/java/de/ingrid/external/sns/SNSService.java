@@ -22,9 +22,13 @@
  */
 package de.ingrid.external.sns;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.URL;
+import java.net.URLConnection;
+import java.rmi.RemoteException;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.ResourceBundle;
@@ -32,20 +36,23 @@ import java.util.ResourceBundle;
 import org.apache.axis.AxisFault;
 import org.apache.log4j.Logger;
 
-import com.slb.taxi.webservice.xtm.stubs.FieldsType;
-import com.slb.taxi.webservice.xtm.stubs.SearchType;
-import com.slb.taxi.webservice.xtm.stubs.TopicMapFragment;
-import com.slb.taxi.webservice.xtm.stubs.xtm.Topic;
+import com.hp.hpl.jena.rdf.model.NodeIterator;
+import com.hp.hpl.jena.rdf.model.RDFNode;
+import com.hp.hpl.jena.rdf.model.Resource;
+import com.hp.hpl.jena.rdf.model.StmtIterator;
 
+import de.ingrid.external.ChronicleService;
 import de.ingrid.external.FullClassifyService;
 import de.ingrid.external.GazetteerService;
 import de.ingrid.external.ThesaurusService;
+import de.ingrid.external.om.Event;
 import de.ingrid.external.om.FullClassifyResult;
 import de.ingrid.external.om.Location;
 import de.ingrid.external.om.RelatedTerm;
 import de.ingrid.external.om.Term;
 import de.ingrid.external.om.Term.TermType;
 import de.ingrid.external.om.TreeTerm;
+import de.ingrid.external.om.impl.FullClassifyResultImpl;
 import de.ingrid.external.om.impl.LocationImpl;
 import de.ingrid.external.om.impl.TermImpl;
 import de.ingrid.external.sns.SNSMapper.HierarchyDirection;
@@ -53,14 +60,11 @@ import de.ingrid.external.sns.SNSMapper.HierarchyDirection;
 /**
  * SNS Access implementing abstract gazetteer, thesaurus, fullClassify API (external services).
  */
-public class SNSService implements GazetteerService, ThesaurusService, FullClassifyService {
+public class SNSService implements GazetteerService, ThesaurusService, FullClassifyService, ChronicleService {
 
-	private final static Logger log = Logger.getLogger(SNSService.class);	
+    private final static Logger log = Logger.getLogger( SNSService.class );
 
-	private final static String SNS_FILTER_THESA = "/thesa";
-	private final static String SNS_FILTER_LOCATIONS = "/location";
-	private final static String SNS_FILTER_EVENTS = "/event";
-	private final static String SNS_PATH_ADMINISTRATIVE_LOCATIONS = "/location/admin";
+    private static final String ADMINISTRATIVE_IDENTIFIER = "-admin-";
 
     // Error string for the frontend
     private static String ERROR_SNS_TIMEOUT = "SNS_TIMEOUT";
@@ -71,559 +75,758 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 
     // Init Method is called by the Spring Framework on initialization
     public void init() throws Exception {
-    	ResourceBundle resourceBundle = ResourceBundle.getBundle("sns");
+        ResourceBundle resourceBundle = ResourceBundle.getBundle( "sns" );
 
-    	if (log.isInfoEnabled()) {
-    		log.info("initializing SNSService, creating SNSClient ! username=" + resourceBundle.getString("sns.username")
-    				+ " " + resourceBundle.getString("sns.serviceURL"));
-    	}
+        if (log.isInfoEnabled()) {
+            log.info( "initializing SNSService, creating SNSClient ! " + "Thesaurus: " + resourceBundle.getString( "sns.serviceURL.thesaurus" ) + " " + "Gazetteer: "
+                    + resourceBundle.getString( "sns.serviceURL.gazetteer" ) + " " + "Chronicle: " + resourceBundle.getString( "sns.serviceURL.chronicle" ) );
+        }
 
-    	snsClient = new SNSClient(
-    			resourceBundle.getString("sns.username"),
-    			resourceBundle.getString("sns.password"),
-    			resourceBundle.getString("sns.language"),
-        		new URL(resourceBundle.getString("sns.serviceURL")));
-    	snsClient.setTimeout(new Integer(resourceBundle.getString("sns.timeout")));
-    	snsMapper = SNSMapper.getInstance(resourceBundle);
+        snsClient = new SNSClient( resourceBundle.getString( "sns.username" ), resourceBundle.getString( "sns.password" ), resourceBundle.getString( "sns.language" ),
+                new URL( resourceBundle.getString( "sns.serviceURL.thesaurus" ) ), new URL( resourceBundle.getString( "sns.serviceURL.gazetteer" ) ),
+                new URL( resourceBundle.getString( "sns.serviceURL.chronicle" ) ) );
+        snsClient.setTimeout( new Integer( resourceBundle.getString( "sns.timeout" ) ) );
+        snsMapper = SNSMapper.getInstance( resourceBundle );
     }
 
     // ----------------------- GazetteerService -----------------------------------
 
-	@Override
-	public Location[] getRelatedLocationsFromLocation(String locationId, 
-			boolean includeFrom, Locale language) {
-    	String langFilter = getSNSLanguageFilter(language);
+    @Override
+    public Location[] getRelatedLocationsFromLocation(String locationId, boolean includeFrom, Locale language) {
+        String langFilter = getSNSLanguageFilter( language );
+        String excludedTerms = "";
 
-    	if (log.isDebugEnabled()) {
-    		log.debug("getRelatedLocationsFromLocation(): " + locationId + " includeFrom=" + includeFrom + " " + langFilter);
-    	}
+        if (log.isDebugEnabled()) {
+            log.debug( "getRelatedLocationsFromLocation(): " + locationId + " includeFrom=" + includeFrom + " " + langFilter );
+        }
 
-    	// no language in SNS for getPSI !!!
-    	// NOTICE: includes location with passed id at FIRST position !
-    	Topic[] topics = snsMapper.getTopics(snsGetPSI(locationId, SNS_FILTER_LOCATIONS));
+        // no language in SNS for getPSI !!!
+        // NOTICE: includes location with passed id at FIRST position !
+        Resource topic = snsClient.getTerm( locationId, langFilter, FilterType.ONLY_LOCATIONS );
+        if (topic != null) {
+            // iterate over all related locations fetched exclusively to get all information about
+            // type and expiration date
+            // List<Location> resultList = snsMapper.mapToLocationsFromLocation(location, checkExpired, langFilter);
+            List<Location> resultList = new ArrayList<Location>();
 
-    	boolean checkExpired = true;
-    	// NOTICE: includes location with passed id !
-    	List<Location> resultList = snsMapper.mapToLocations(topics, checkExpired, langFilter);
-
-    	// filter passed location ?
-    	if (!includeFrom) {
-    		for (Iterator<Location> it = resultList.iterator(); it.hasNext(); ) {
-    			if (locationId.equals(it.next().getId())) {
-    				it.remove();
-    				break;
-    			}
-    		}
-    	}
-
-    	if (log.isDebugEnabled()) {
-    		log.debug("return locations.size: " + resultList.size());
-    	}
-
-	    return resultList.toArray(new Location[resultList.size()]);
-	}
-
-	@Override
-	public Location getLocation(String locationId, Locale language) {
-    	Location result = null;
-    	String langFilter = getSNSLanguageFilter(language);
-
-    	if (log.isDebugEnabled()) {
-    		log.debug("getLocation(): " + locationId + " " + langFilter);
-    	}
-
-    	// no language in SNS for getPSI !!!
-    	Topic[] topics = snsMapper.getTopics(snsGetPSI(locationId, SNS_FILTER_LOCATIONS));
-    	if (topics != null) {
-            for (Topic topic : topics) {
-            	if (topic.getId().equals(locationId)) {
-            		result = snsMapper.mapToLocation(topic, new LocationImpl(), langFilter);
-            		break;
-            	}
+            StmtIterator it = RDFUtils.getRelatedConcepts( topic );
+            while (it.hasNext()) {
+                Resource nodeRes = it.next().getResource();
+                // we expect all necessary data to be inside the result
+                // otherwise we have to query all terms separately, which takes too long
+                // Resource locationRes = snsClient.getTerm(RDFUtils.getId(nodeRes), langFilter, FilterType.ONLY_LOCATIONS);
+                Location loc = snsMapper.mapToLocation( nodeRes, new LocationImpl(), langFilter );
+                if (!loc.getIsExpired())
+                    resultList.add( loc );
+                else
+                    excludedTerms += loc.getId() + ",";
             }
 
-    	}
+            // NOTICE: includes location with passed id to the beginning!
+            if (includeFrom) {
+                Location fromLocation = snsMapper.mapToLocation( topic, new LocationImpl(), langFilter );
+                if (!fromLocation.getIsExpired())
+                    resultList.add( 0, fromLocation );
+            }
 
-    	if (log.isDebugEnabled()) {
-    		log.debug("return: " + result);
-    	}
+            if (log.isDebugEnabled()) {
+                int excludedLength = excludedTerms.isEmpty() ? 0 : excludedTerms.split( "," ).length;
+                log.debug( "return locations.size: " + resultList.size() + " (excluded: " + excludedLength + " => " + excludedTerms + ")" );
+            }
 
-	    return result;
-	}
+            return resultList.toArray( new Location[resultList.size()] );
+        }
+        return new Location[0];
+    }
 
-	@Override
-	public Location[] getLocationsFromText(String text, int analyzeMaxWords,
-			boolean ignoreCase, Locale language) {
-    	String langFilter = getSNSLanguageFilter(language);
+    @Override
+    public Location getLocation(String locationId, Locale language) {
+        Location result = null;
+        String langFilter = getSNSLanguageFilter( language );
 
-    	if (log.isDebugEnabled()) {
-    		log.debug("getLocationsFromText(): " + text + " " + langFilter);
-    	}
+        if (log.isDebugEnabled()) {
+            log.debug( "getLocation(): " + locationId + " " + langFilter );
+        }
 
-    	Topic[] topics = getTopicsFromMapFragment(snsAutoClassifyText(text,
-    			analyzeMaxWords, FilterType.ONLY_LOCATIONS, ignoreCase, langFilter));
+        // no language in SNS for getPSI !!!
+        Resource location = snsClient.getTerm( locationId, langFilter, FilterType.ONLY_LOCATIONS );
+        if (location != null) {
+            result = snsMapper.mapToLocation( location, new LocationImpl(), langFilter );
+        }
 
-    	boolean checkExpired = true;
-    	List<Location> resultList = snsMapper.mapToLocations(topics, checkExpired, langFilter);
+        if (log.isDebugEnabled()) {
+            log.debug( "return: " + result );
+        }
 
-    	if (log.isDebugEnabled()) {
-    		log.debug("return locations.size: " + resultList.size());
-    	}
+        return result;
+    }
 
-	    return resultList.toArray(new Location[resultList.size()]);
-	}
+    @Override
+    public Location[] getLocationsFromText(String text, int analyzeMaxWords, boolean ignoreCase, Locale language) {
+        FilterType type = FilterType.ONLY_LOCATIONS;
+        List<Location> resultList = new ArrayList<Location>();
+        String langFilter = getSNSLanguageFilter( language );
 
-	@Override
-	public Location[] findLocationsFromQueryTerm(String queryTerm,
-			QueryType typeOfQuery, de.ingrid.external.GazetteerService.MatchingType matching, Locale language) {
-    	String path = getSNSLocationPath(typeOfQuery);
-    	SearchType searchType = getSNSSearchType(matching);
-    	String langFilter = getSNSLanguageFilter(language);
-    	boolean addDescriptors = false;
+        if (log.isDebugEnabled()) {
+            log.debug( "getLocationsFromText(): " + text + " " + langFilter );
+        }
 
-    	if (log.isDebugEnabled()) {
-    		log.debug("findLocationsFromQueryTerm(): " + queryTerm + " " + path + " " + searchType + " " + langFilter);
-    	}
+        Resource[] res = snsAutoClassifyText( text, analyzeMaxWords, type, ignoreCase, langFilter );
 
-    	Topic[] topics = snsFindTopics(queryTerm, path, searchType,	addDescriptors, langFilter);
+        // boolean checkExpired = true;
+        if (res[1] != null) {
+            NodeIterator it = RDFUtils.getResults( res[1] );
+            while (it.hasNext()) {
+                RDFNode node = it.next();
+                Resource locationRes = snsClient.getTerm( RDFUtils.getId( node.asResource() ), langFilter, type );
+                if (locationRes == null)
+                    continue;
+                Location loc = snsMapper.mapToLocation( locationRes, new LocationImpl(), langFilter );
 
-    	boolean checkExpired = true;
-    	List<Location> resultList = snsMapper.mapToLocations(topics, checkExpired, langFilter);
+                // do not add expired locations
+                if (!loc.getIsExpired())
+                    resultList.add( loc );
+            }
+        }
 
-    	if (log.isDebugEnabled()) {
-    		log.debug("return locations.size: " + resultList.size());
-    	}
+        if (log.isDebugEnabled()) {
+            log.debug( "return locations.size: " + resultList.size() );
+        }
 
-	    return resultList.toArray(new Location[resultList.size()]);
-	}
+        return resultList.toArray( new Location[resultList.size()] );
+    }
+
+    @Override
+    public Location[] findLocationsFromQueryTerm(String queryTerm, QueryType typeOfQuery, de.ingrid.external.GazetteerService.MatchingType matching, Locale language) {
+        FilterType type = FilterType.ONLY_LOCATIONS;
+        List<Location> resultList = new ArrayList<Location>();
+        String searchType = getSNSSearchType( matching, queryTerm );
+        String langFilter = getSNSLanguageFilter( language );
+        queryTerm = removeWildcards( queryTerm );
+        boolean addDescriptors = false;
+
+        if (log.isDebugEnabled()) {
+            log.debug( "findLocationsFromQueryTerm(): " + queryTerm + " " + FilterType.ONLY_LOCATIONS + " " + searchType + " " + langFilter );
+        }
+
+        Resource topics = snsFindTopics( null, queryTerm, type, searchType, addDescriptors, langFilter );
+        if (topics == null)
+            return new Location[0];
+
+        NodeIterator it = RDFUtils.getResults( topics );
+        while (it.hasNext()) {
+            RDFNode node = it.next();
+            // if (locationRes == null) continue;
+            Location loc = snsMapper.mapToLocation( node.asResource(), new LocationImpl(), langFilter );
+
+            // exclude administrative locations if wanted!
+            if (typeOfQuery == QueryType.ONLY_ADMINISTRATIVE_LOCATIONS && !isAdministrativeLocation( loc ))
+                continue;
+
+            // do not add expired locations
+            if (!loc.getIsExpired())
+                resultList.add( loc );
+        }
+
+        if (log.isDebugEnabled()) {
+            log.debug( "return locations.size: " + resultList.size() );
+        }
+
+        return resultList.toArray( new Location[resultList.size()] );
+    }
+
+    private String removeWildcards(String queryTerm) {
+        return queryTerm.replaceAll( "\\*", "" );
+    }
 
     // ----------------------- ThesaurusService -----------------------------------
 
-	@Override
-	public Term[] findTermsFromQueryTerm(String queryTerm, de.ingrid.external.ThesaurusService.MatchingType matching,
-			boolean addDescriptors, Locale language) {
-    	SearchType searchType = getSNSSearchType(matching);
-    	String langFilter = getSNSLanguageFilter(language);
+    private boolean isAdministrativeLocation(Location loc) {
+        return loc.getTypeId() != null && loc.getTypeId().contains( ADMINISTRATIVE_IDENTIFIER );
+    }
 
-    	if (log.isDebugEnabled()) {
-    		log.debug("findTermsFromQueryTerm(): " + queryTerm + " " + searchType + " " + langFilter);
-    	}
+    @Override
+    public Term[] findTermsFromQueryTerm(String queryTerm, de.ingrid.external.ThesaurusService.MatchingType matching, boolean addDescriptors, Locale language) {
+        return findTermsFromQueryTerm( null, queryTerm, matching, addDescriptors, language );
+    }
 
-    	Topic[] topics = snsFindTopics(queryTerm, SNS_FILTER_THESA, searchType,
-    			addDescriptors, langFilter);
-    	List<Term> resultList = snsMapper.mapToTerms(topics, null, langFilter);
+    @Override
+    public Term[] findTermsFromQueryTerm(String url, String queryTerm, de.ingrid.external.ThesaurusService.MatchingType matching, boolean addDescriptors, Locale language) {
+        String searchType = getSNSSearchType( matching, queryTerm );
+        String langFilter = getSNSLanguageFilter( language );
 
-    	if (log.isDebugEnabled()) {
-    		log.debug("return locations.size: " + resultList.size());
-    	}
+        if (log.isDebugEnabled()) {
+            log.debug( "findTermsFromQueryTerm(): " + queryTerm + " " + searchType + " " + langFilter );
+        }
 
-	    return resultList.toArray(new Term[resultList.size()]);
-	}
+        Resource res = snsFindTopics( url, queryTerm, FilterType.ONLY_TERMS, searchType, addDescriptors, langFilter );
+        List<Term> resultList = snsMapper.mapToTerms( res, null, langFilter );
 
-	@Override
-	public TreeTerm[] getHierarchyNextLevel(String termId, Locale language) {
-		long depth = 2;
-		HierarchyDirection direction = HierarchyDirection.DOWN;
-		boolean includeSiblings = false;
-    	String langFilter = getSNSLanguageFilter(language);
-		// if top terms wanted adapt parameters
-		if (termId == null) {
-			// depth 1 is enough, fetches children of top terms
-			depth = 1;
-		}
+        if (log.isDebugEnabled()) {
+            log.debug( "return locations.size: " + resultList.size() );
+        }
 
-    	if (log.isDebugEnabled()) {
-    		log.debug("getHierarchyNextLevel(): " + termId + " " + langFilter);
-    	}
+        return resultList.toArray( new Term[resultList.size()] );
+    }
 
-		TopicMapFragment mapFragment = snsGetHierarchy(termId,
-				depth, direction, includeSiblings, langFilter);
+    @Override
+    public TreeTerm[] getHierarchyNextLevel(String termId, Locale language) {
+        return getHierarchyNextLevel( null, termId, language );
+    }
 
-		// we also need language for additional filtering ! SNS delivers wrong results !
-    	List<TreeTerm> resultList =
-    		snsMapper.mapToTreeTerms(termId, direction, mapFragment, langFilter);
+    @Override
+    public TreeTerm[] getHierarchyNextLevel(String url, String termId, Locale language) {
+        long depth = 2;
+        HierarchyDirection direction = HierarchyDirection.DOWN;
+        boolean includeSiblings = false;
+        String langFilter = getSNSLanguageFilter( language );
+        // if top terms wanted adapt parameters
+        if (termId == null) {
+            // depth 1 is enough, fetches children of top terms
+            // BUT we use 0 to speed up the process and assume that every root node has
+            // at least one child
+            depth = 0;
+        }
 
-    	if (log.isDebugEnabled()) {
-    		log.debug("return terms.size: " + resultList.size());
-    	}
+        if (log.isDebugEnabled()) {
+            log.debug( "getHierarchyNextLevel(): " + termId + " " + langFilter );
+        }
 
-	    return resultList.toArray(new TreeTerm[resultList.size()]);
-	}
+        Resource mapFragment = snsGetHierarchy( url, termId, depth, direction, includeSiblings, langFilter );
 
-	@Override
-	public TreeTerm getHierarchyPathToTop(String termId, Locale language) {
-		long depth = 0; // fetches till top
-		HierarchyDirection direction = HierarchyDirection.UP;
-		boolean includeSiblings = false;
-    	String langFilter = getSNSLanguageFilter(language);
+        List<TreeTerm> resultList = new ArrayList<TreeTerm>();
+        if (mapFragment != null) {
+            // we also need language for additional filtering ! SNS delivers wrong results !
+            if (termId == null)
+                resultList = snsMapper.mapRootToTreeTerms( termId, direction, mapFragment, langFilter );
+            else
+                resultList = snsMapper.mapToTreeTerms( termId, direction, mapFragment, langFilter );
 
-    	if (log.isDebugEnabled()) {
-    		log.debug("getHierarchyPathToTop(): " + termId + " " + langFilter);
-    	}
+            if (log.isDebugEnabled()) {
+                log.debug( "return terms.size: " + resultList.size() );
+            }
+        }
+        return resultList.toArray( new TreeTerm[resultList.size()] );
+    }
 
-		TopicMapFragment mapFragment = snsGetHierarchy(termId,
-				depth, direction, includeSiblings, langFilter);
+    @Override
+    public TreeTerm getHierarchyPathToTop(String termId, Locale language) {
+        return getHierarchyPathToTop( null, termId, language );
+    }
 
-    	List<TreeTerm> resultList =
-    		snsMapper.mapToTreeTerms(termId, direction, mapFragment, langFilter);
+    @Override
+    public TreeTerm getHierarchyPathToTop(String url, String termId, Locale language) {
+        long depth = SNSClient.MAX_HIERARCHY_DEPTH; // fetch maximum available
+        HierarchyDirection direction = HierarchyDirection.UP;
+        boolean includeSiblings = false;
+        String langFilter = getSNSLanguageFilter( language );
 
-    	if (log.isDebugEnabled()) {
-    		log.debug("return startTerm: " + resultList.get(0));
-    	}
+        if (log.isDebugEnabled()) {
+            log.debug( "getHierarchyPathToTop(): " + termId + " " + langFilter );
+        }
 
-	    return resultList.get(0);
-	}
+        Resource hierarchy = snsGetHierarchy( url, termId, depth, direction, includeSiblings, langFilter );
 
-	@Override
-	public Term[] getSimilarTermsFromNames(String[] names, boolean ignoreCase, Locale language) {
-    	String langFilter = getSNSLanguageFilter(language);
+        if (hierarchy == null)
+            return null;
 
-    	if (log.isDebugEnabled()) {
-    		log.debug("getSimilarTermsFromNames(): " + names + " " + langFilter);
-    	}
+        List<TreeTerm> resultList = snsMapper.mapToTreeTerms( termId, direction, hierarchy, langFilter );
 
-    	Topic[] topics = snsGetSimilarTerms(names, ignoreCase, langFilter);
-    	List<Term> resultList = snsMapper.mapToTerms(topics, null, langFilter);
+        // get unresolved parents due to too short hierarchy
+        // in case the analyzed node has no direct parents we stop here
+        // because we cannot determine the correct top level node!
+        if (resultList.get( 0 ).getParents() != null) {
+            checkForNonRootElements( resultList, hierarchy, url, language );
+        }
 
-    	if (log.isDebugEnabled()) {
-    		log.debug("return terms.size: " + resultList.size());
-    	}
+        if (log.isDebugEnabled()) {
+            log.debug( "return startTerm: " + resultList.get( 0 ) );
+        }
 
-	    return resultList.toArray(new Term[resultList.size()]);
-	}
+        return resultList.get( 0 );
+    }
 
-	@Override
-	public RelatedTerm[] getRelatedTermsFromTerm(String termId, Locale language) {
-    	String langFilter = getSNSLanguageFilter(language);
+    /**
+     * This method checks all parent elements who have no further parent element if they are top elements. If not then the hierarchy is
+     * fetched from the last parent and the getHierarchyPathToTop is called.
+     */
+    private void checkForNonRootElements(List<TreeTerm> resultList, Resource hierarchy, String url, Locale language) {
+        for (TreeTerm treeTerm : resultList) {
+            Resource parentRes = hierarchy.getModel().getResource( treeTerm.getId() );
+            if (treeTerm.getParents() != null) {
+                checkForNonRootElements( treeTerm.getParents(), hierarchy, url, language );
+            } else if (treeTerm.getParents() == null && !RDFUtils.isTopConcept( parentRes )) {
+                List<TreeTerm> parents = getHierarchyPathToTop( url, treeTerm.getId(), language ).getParents();
+                if (parents != null) {
+                    for (TreeTerm parent : parents) {
+                        treeTerm.addParent( parent );
+                    }
+                }
+            }
+        }
 
-    	if (log.isDebugEnabled()) {
-    		log.debug("getRelatedTermsFromTerm(): " + termId + " " + langFilter);
-    	}
+    }
 
-    	// no language in SNS for getPSI !!!
-		TopicMapFragment mapFragment = snsGetPSI(termId, SNS_FILTER_THESA);
+    @Override
+    public Term[] getSimilarTermsFromNames(String[] names, boolean ignoreCase, Locale language) {
+        String langFilter = getSNSLanguageFilter( language );
 
-    	List<RelatedTerm> resultList = snsMapper.mapToRelatedTerms(termId, mapFragment, langFilter);
+        if (log.isDebugEnabled()) {
+            log.debug( "getSimilarTermsFromNames(): " + names + " " + langFilter );
+        }
 
-    	if (log.isDebugEnabled()) {
-    		log.debug("return terms.size: " + resultList.size());
-    	}
+        // Resource topics = snsGetSimilarTerms(names, ignoreCase, langFilter);
+        Resource resSimilarTerms = snsClient.getSimilarTerms( ignoreCase, names, langFilter );
+        List<Term> resultList = snsMapper.mapSimilarToTerms( resSimilarTerms, langFilter );
 
-	    return resultList.toArray(new RelatedTerm[resultList.size()]);
-	}
+        if (log.isDebugEnabled()) {
+            log.debug( "return terms.size: " + resultList.size() );
+        }
 
-	@Override
-	public Term getTerm(String termId, Locale language) {
-    	Term result = null;
-    	String langFilter = getSNSLanguageFilter(language);
+        return resultList.toArray( new Term[resultList.size()] );
+    }
 
-    	if (log.isDebugEnabled()) {
-    		log.debug("getTerm(): " + termId + " " + langFilter);
-    	}
+    @Override
+    public RelatedTerm[] getRelatedTermsFromTerm(String termId, Locale language) {
+        String langFilter = getSNSLanguageFilter( language );
 
-    	// no language in SNS for getPSI !!!
-    	Topic[] topics = snsMapper.getTopics(snsGetPSI(termId, SNS_FILTER_THESA));
-    	if (topics != null) {
-            for (Topic topic : topics) {
-            	if (topic.getId().equals(termId)) {
-            		result = snsMapper.mapToTerm(topic, new TermImpl(), langFilter);
-            		break;
-            	}
+        if (log.isDebugEnabled()) {
+            log.debug( "getRelatedTermsFromTerm(): " + termId + " " + langFilter );
+        }
+
+        Resource term = snsClient.getTerm( termId, langFilter, FilterType.ONLY_TERMS );
+
+        if (term != null) {
+            List<RelatedTerm> resultList = snsMapper.mapToRelatedTerms( termId, term, langFilter );
+
+            if (log.isDebugEnabled()) {
+                log.debug( "return terms.size: " + resultList.size() );
             }
 
-    	}
+            return resultList.toArray( new RelatedTerm[resultList.size()] );
+        }
 
-    	if (log.isDebugEnabled()) {
-    		log.debug("return term: " + result);
-    	}
+        return new RelatedTerm[0];
+    }
 
-	    return result;
-	}
+    @Override
+    public Term getTerm(String termId, Locale language) {
+        String langFilter = getSNSLanguageFilter( language );
 
-	@Override
-	public Term[] getTermsFromText(String text, int analyzeMaxWords,
-			boolean ignoreCase, Locale language) {
-    	String langFilter = getSNSLanguageFilter(language);
+        if (log.isDebugEnabled()) {
+            log.debug( "getTerm(): " + termId + " " + langFilter );
+        }
 
-    	if (log.isDebugEnabled()) {
-    		log.debug("getTermsFromText(): " + text + " maxWords=" + analyzeMaxWords + " ignoreCase=" + ignoreCase + " " + langFilter);
-    	}
+        // no language in SNS for getPSI !!!
+        Term topic = null;
+        Resource term = snsClient.getTerm( termId, langFilter, FilterType.ONLY_TERMS );
 
-    	Topic[] topics = getTopicsFromMapFragment(snsAutoClassifyText(text,
-    			analyzeMaxWords, FilterType.ONLY_TERMS, ignoreCase, langFilter));
+        if (term != null) {
+            topic = snsMapper.mapToTerm( term, new TermImpl(), langFilter );
 
-    	List<Term> resultList = snsMapper.mapToTerms(topics, TermType.DESCRIPTOR, langFilter);
+            if (log.isDebugEnabled()) {
+                log.debug( "return term: " + topic );
+            }
+        }
 
-    	if (log.isDebugEnabled()) {
-    		log.debug("return terms.size: " + resultList.size());
-    	}
+        return topic;
+    }
 
-	    return resultList.toArray(new Term[resultList.size()]);
-	}
+    @Override
+    public Term[] getTermsFromText(String text, int analyzeMaxWords, boolean ignoreCase, Locale language) {
+        String langFilter = getSNSLanguageFilter( language );
+
+        if (log.isDebugEnabled()) {
+            log.debug( "getTermsFromText(): " + text + " maxWords=" + analyzeMaxWords + " ignoreCase=" + ignoreCase + " " + langFilter );
+        }
+
+        Resource[] res = snsAutoClassifyText( text, analyzeMaxWords, FilterType.ONLY_TERMS, ignoreCase, langFilter );
+
+        List<Term> resultList = snsMapper.mapToTerms( res[0], TermType.DESCRIPTOR, langFilter );
+
+        if (log.isDebugEnabled()) {
+            log.debug( "return terms.size: " + resultList.size() );
+        }
+
+        return resultList.toArray( new Term[resultList.size()] );
+    }
 
     // ----------------------- FullClassifyService -----------------------------------
 
-	@Override
-	public FullClassifyResult autoClassifyURL(URL url, int analyzeMaxWords,
-			boolean ignoreCase, FilterType filter, Locale language) {
-    	String langFilter = getSNSLanguageFilter(language);
+    @Override
+    public FullClassifyResult autoClassifyURL(URL url, int analyzeMaxWords, boolean ignoreCase, FilterType filter, Locale language) {
+        String langFilter = getSNSLanguageFilter( language );
 
-    	if (log.isDebugEnabled()) {
-    		log.debug("autoClassifyURL(): " + url + " maxWords=" + analyzeMaxWords + " ignoreCase=" + ignoreCase + " " + langFilter);
-    	}
+        if (log.isDebugEnabled()) {
+            log.debug( "autoClassifyURL(): " + url + " maxWords=" + analyzeMaxWords + " ignoreCase=" + ignoreCase + " " + langFilter );
+        }
 
-		TopicMapFragment mapFragment =
-			snsAutoClassifyURL(url, analyzeMaxWords, filter, ignoreCase, langFilter);
-		FullClassifyResult result = snsMapper.mapToFullClassifyResult(mapFragment, langFilter);
+        Resource[] resources = snsAutoClassifyURL( url, filter, langFilter );
+        FullClassifyResult result = convertResourcesToFullClassifyResult( resources, langFilter );
+        result.setIndexedDocument( snsMapper.mapToIndexedDocument( getHtmlContent( url ), url ) );
 
-    	if (log.isDebugEnabled()) {
-    		int numTerms = result.getTerms() != null ? result.getTerms().size() : 0;
-    		int numLocations = result.getLocations() != null ? result.getLocations().size() : 0;
-    		int numEvents = result.getEvents() != null ? result.getEvents().size() : 0;
-    		log.debug("FullClassifyResult: numTerms=" + numTerms + " numLocations=" + numLocations + " numEvents=" + numEvents);
-    	}
+        if (log.isDebugEnabled()) {
+            int numTerms = result.getTerms() != null ? result.getTerms().size() : 0;
+            int numLocations = result.getLocations() != null ? result.getLocations().size() : 0;
+            int numEvents = result.getEvents() != null ? result.getEvents().size() : 0;
+            log.debug( "FullClassifyResult: numTerms=" + numTerms + " numLocations=" + numLocations + " numEvents=" + numEvents );
+        }
 
-		return result;
-	}
+        return result;
+    }
 
-	@Override
-	public FullClassifyResult autoClassifyText(String text, int analyzeMaxWords,
-			boolean ignoreCase, FilterType filter, Locale language) {
-    	String langFilter = getSNSLanguageFilter(language);
+    @Override
+    public FullClassifyResult autoClassifyText(String text, int analyzeMaxWords, boolean ignoreCase, FilterType filter, Locale language) {
+        String langFilter = getSNSLanguageFilter( language );
 
-    	if (log.isDebugEnabled()) {
-    		log.debug("autoClassifyText(): maxWords=" + analyzeMaxWords + " ignoreCase=" + ignoreCase + " " + langFilter);
-    	}
+        if (log.isDebugEnabled()) {
+            log.debug( "autoClassifyText(): maxWords=" + analyzeMaxWords + " ignoreCase=" + ignoreCase + " " + langFilter );
+        }
 
-		TopicMapFragment mapFragment =
-			snsAutoClassifyText(text, analyzeMaxWords, filter, ignoreCase, langFilter);
-		FullClassifyResult result = snsMapper.mapToFullClassifyResult(mapFragment, langFilter);
+        Resource[] resources = snsAutoClassifyText( text, analyzeMaxWords, filter, ignoreCase, langFilter );
+        FullClassifyResult result = convertResourcesToFullClassifyResult( resources, langFilter );
 
-    	if (log.isDebugEnabled()) {
-    		int numTerms = result.getTerms() != null ? result.getTerms().size() : 0;
-    		int numLocations = result.getLocations() != null ? result.getLocations().size() : 0;
-    		int numEvents = result.getEvents() != null ? result.getEvents().size() : 0;
-    		log.debug("FullClassifyResult: numTerms=" + numTerms + " numLocations=" + numLocations + " numEvents=" + numEvents);
-    	}
+        if (log.isDebugEnabled()) {
+            int numTerms = result.getTerms() != null ? result.getTerms().size() : 0;
+            int numLocations = result.getLocations() != null ? result.getLocations().size() : 0;
+            int numEvents = result.getEvents() != null ? result.getEvents().size() : 0;
+            log.debug( "FullClassifyResult: numTerms=" + numTerms + " numLocations=" + numLocations + " numEvents=" + numEvents );
+        }
 
-		return result;
-	}
+        return result;
+    }
 
     // ----------------------- PRIVATE -----------------------------------
 
-	/** Call SNS findTopics. Map passed params to according SNS params. */
-	private Topic[] snsFindTopics(String queryTerms,
-			String path, SearchType searchType, boolean addDescriptors, String langFilter) {
-		Topic[] topics = null;
+    private FullClassifyResult convertResourcesToFullClassifyResult(Resource[] resources, String langFilter) {
+        List<Term> terms = new ArrayList<Term>();
+        List<Location> locations = new ArrayList<Location>();
+        List<Event> events = new ArrayList<Event>();
+        for (int i = 0; i < resources.length; i++) {
+            Resource resource = resources[i];
+            if (resource != null) {
+                FilterType type = null;
+                if (i == 0)
+                    type = FilterType.ONLY_TERMS;
+                else if (i == 1)
+                    type = FilterType.ONLY_LOCATIONS;
+                else if (i == 2)
+                    type = FilterType.ONLY_EVENTS;
+                NodeIterator it = RDFUtils.getResults( resource );
+                while (it.hasNext()) {
+                    RDFNode node = it.next();
+                    Resource locationRes = snsClient.getTerm( RDFUtils.getId( node.asResource() ), langFilter, type );
+                    if (locationRes == null)
+                        continue;
+                    if (i == 0)
+                        terms.add( snsMapper.mapToTerm( locationRes, new TermImpl(), langFilter ) );
+                    else if (i == 1)
+                        locations.add( snsMapper.mapToLocation( locationRes, new LocationImpl(), langFilter ) );
+                    else if (i == 2)
+                        events.add( snsMapper.mapToEvent( locationRes, langFilter ) );
+                }
+            }
+        }
+        FullClassifyResultImpl result = new FullClassifyResultImpl();
+        result.setLocations( locations );
+        result.setTerms( terms );
+        result.setEvents( events );
 
-    	TopicMapFragment mapFragment = null;
-    	try {
-    		mapFragment = snsClient.findTopics(queryTerms, path, searchType,
-    	            FieldsType.captors, 0, 500, langFilter, addDescriptors);
-    	} catch (Exception e) {
-	    	log.error("Error calling snsClient.findTopics", e);
-	    }
-	    
-	    if (null != mapFragment) {
-	    	topics = mapFragment.getTopicMap().getTopic();
-	    }
-	    return topics;
-	}
-	
-	/** Call SNS getSimilarTerms. Map passed params to according SNS params. */
-	private Topic[] snsGetSimilarTerms(String[] queryTerms, boolean ignoreCase, String langFilter) {
-    	TopicMapFragment mapFragment = null;
-    	try {
-    		mapFragment = snsClient.getSimilarTerms(ignoreCase, queryTerms, langFilter);
-    	} catch (Exception e) {
-	    	log.error("Error calling snsClient.getSimilarTerms", e);
-	    }
-
-        final List<Topic> resultList = new ArrayList<Topic>();
-        final List<String> duplicateList = new ArrayList<String>();
-	    if (null != mapFragment) {
-	    	Topic[] topics = mapFragment.getTopicMap().getTopic();
-	        if (null != topics) {
-	            for (Topic topic : topics) {
-	                final String topicId = topic.getId();
-	                if (!duplicateList.contains(topicId)) {
-	                    if (!topicId.startsWith("_Interface")) {
-	                        resultList.add(topic);
-	                    }
-	                    duplicateList.add(topicId);
-	                }
-	            }
-	        }
-	    }
-
-	    return resultList.toArray(new Topic[resultList.size()]);
-	}
-	
-	/** Call SNS getPSI. Map passed params to according SNS params. */
-	private TopicMapFragment snsGetPSI(String topicId, String filter) {
-    	TopicMapFragment mapFragment = null;
-    	try {
-    		mapFragment = snsClient.getPSI(topicId, 0, filter);
-    	} catch (Exception e) {
-        	log.error("Error calling snsClient.getPSI (topicId=" + topicId
-            		+ ", filter=" + filter + "), we return null Details", e);
-	    }
-	    
-	    return mapFragment;
-	}
-	
-	/** Call SNS autoClassify. Map passed params to according SNS params. */
-    private TopicMapFragment snsAutoClassifyText(String text,
-    		int analyzeMaxWords, FilterType filterType, boolean ignoreCase, String langFilter) {
-    	String filter = getSNSFilterType(filterType);
-    	TopicMapFragment mapFragment = null;
-    	try {
-    		mapFragment = snsClient.autoClassify(text, analyzeMaxWords, filter, ignoreCase, langFilter);
-    	} catch (Exception e) {
-	    	log.error("Error calling snsClient.autoClassify", e);
-    	}
-    	
-    	return mapFragment;
+        return result;
     }
 
-	/** Call SNS autoClassify. Map passed params to according SNS params. */
-    private TopicMapFragment snsAutoClassifyURL(URL url,
-    		int analyzeMaxWords, FilterType filterType, boolean ignoreCase, String langFilter) {
-    	String filter = getSNSFilterType(filterType);
-    	TopicMapFragment mapFragment = null;
-    	try {
-    		mapFragment = snsClient.autoClassifyToUrl(url.toString(), analyzeMaxWords, filter, ignoreCase, langFilter);
+    /**
+     * Call SNS findTopics. Map passed params to according SNS params.
+     * 
+     * @param url
+     *            defines the service url to search in
+     */
+    private Resource snsFindTopics(String url, String queryTerms, FilterType type, String searchType, boolean addDescriptors, String langFilter) {
 
-    	} catch (AxisFault f) {
-    		log.info("Error while calling autoClassifyToUrl.", f);
-    		if (f.getFaultString().contains("Timeout"))
-    			throw new RuntimeException(ERROR_SNS_TIMEOUT);
-    		else
-    			throw new RuntimeException(ERROR_SNS_INVALID_URL);
+        Resource mapFragment = null;
+        try {
+            mapFragment = snsClient.findTopics( url, queryTerms, type, searchType, "FieldsType.captors", 0, 500, langFilter, addDescriptors );
+        } catch (Exception e) {
+            log.error( "Error calling snsClient.findTopics", e );
+        }
 
-    	} catch (Exception e) {
-	    	log.error("Error calling snsClient.autoClassifyToUrl", e);
-    	}
-    	
-    	return mapFragment;
+        return mapFragment;
     }
 
-	/** Call SNS getHierachy. Map passed params to according SNS params. */
-	private TopicMapFragment snsGetHierarchy(String root,
-			long depth, HierarchyDirection hierarchyDir, boolean includeSiblings,
-			String langFilter) {
-		if (root == null) {
-			root = "toplevel";
-		}
-		String direction = (hierarchyDir == HierarchyDirection.DOWN) ? "down" : "up";
+    /** Call SNS autoClassify. Map passed params to according SNS params. */
+    private Resource[] snsAutoClassifyText(String text, int analyzeMaxWords, FilterType filter, boolean ignoreCase, String langFilter) {
+        Resource[] resources = new Resource[3];
+        try {
+            if (filter == null || filter == FilterType.ONLY_TERMS)
+                resources[0] = snsClient.autoClassify( text, analyzeMaxWords, FilterType.ONLY_TERMS, ignoreCase, langFilter );
+            if (filter == null || filter == FilterType.ONLY_LOCATIONS)
+                resources[1] = snsClient.autoClassify( text, analyzeMaxWords, FilterType.ONLY_LOCATIONS, ignoreCase, langFilter );
+            if (filter == null || filter == FilterType.ONLY_EVENTS)
+                resources[2] = snsClient.autoClassify( text, analyzeMaxWords, FilterType.ONLY_EVENTS, ignoreCase, langFilter );
+        } catch (Exception e) {
+            log.error( "Error calling snsClient.autoClassify for text", e );
+        }
 
-    	TopicMapFragment mapFragment = null;
-    	try {
-            mapFragment = snsClient.getHierachy("narrowerTermAssoc", depth, direction,
-                    includeSiblings, langFilter, root);
-    	} catch (Exception e) {
-	    	log.error("Error calling snsClient.getHierachy with root=" + root, e);
-	    }
-	    
-	    return mapFragment;
-	}
-	
-	/** Determine location path for SNS dependent from passed query type.
-	 * @param typeOfQuery query type from request, pass null if default location path !
-	 * @return SNS location path
-	 */
-	private String getSNSLocationPath(QueryType typeOfQuery) {
-		// default is all locations !
-    	String path = SNS_FILTER_LOCATIONS;
-    	if (typeOfQuery == QueryType.ONLY_ADMINISTRATIVE_LOCATIONS) {
-    		path = SNS_PATH_ADMINISTRATIVE_LOCATIONS;
-    	}
-		
-    	return path;
-	}
+        return resources;
+    }
 
-	/** Determine SearchType for SNS dependent from passed matching type. */
-	private SearchType getSNSSearchType(de.ingrid.external.ThesaurusService.MatchingType matchingType) {
-		// default is all locations !
-    	SearchType searchType = SearchType.beginsWith;
-    	if (matchingType == de.ingrid.external.ThesaurusService.MatchingType.CONTAINS) {
-    		searchType = SearchType.contains;
-    	} else if (matchingType == de.ingrid.external.ThesaurusService.MatchingType.EXACT) {
-    		searchType = SearchType.exact;    		
-    	}
-		
-    	return searchType;
-	}
+    /**
+     * 
+     * @param url
+     *            is the url to analyze
+     * @param langFilter
+     * @return the resources in the following order: Thesaurus, Gazetteer, Chronical
+     */
+    private Resource[] snsAutoClassifyURL(URL url, FilterType filter, String langFilter) {
+        Resource[] resources = new Resource[3];
+        try {
+            if (filter == null || filter == FilterType.ONLY_TERMS)
+                resources[0] = snsClient.autoClassifyToUrl( url.toString(), FilterType.ONLY_TERMS, langFilter );
+            if (filter == null || filter == FilterType.ONLY_LOCATIONS)
+                resources[1] = snsClient.autoClassifyToUrl( url.toString(), FilterType.ONLY_LOCATIONS, langFilter );
+            if (filter == null || filter == FilterType.ONLY_EVENTS)
+                resources[2] = snsClient.autoClassifyToUrl( url.toString(), FilterType.ONLY_EVENTS, langFilter );
 
-	/** Determine SearchType for SNS dependent from passed matching type. */
-	private SearchType getSNSSearchType(de.ingrid.external.GazetteerService.MatchingType matchingType) {
-		// default is all locations !
-    	SearchType searchType = SearchType.beginsWith;
-    	if (matchingType == de.ingrid.external.GazetteerService.MatchingType.CONTAINS) {
-    		searchType = SearchType.contains;
-    	} else if (matchingType == de.ingrid.external.GazetteerService.MatchingType.EXACT) {
-    		searchType = SearchType.exact;    		
-    	}
-		
-    	return searchType;
-	}
+        } catch (AxisFault f) {
+            log.info( "Error while calling autoClassifyToUrl.", f );
+            if (f.getFaultString().contains( "Timeout" ))
+                throw new RuntimeException( ERROR_SNS_TIMEOUT );
+            else
+                throw new RuntimeException( ERROR_SNS_INVALID_URL );
 
-	/** Determine filter type for SNS dependent from passed FilterType. */
-	private String getSNSFilterType(de.ingrid.external.FullClassifyService.FilterType filterType) {
-		// default is all !
-		String filter = null;
-    	if (filterType == de.ingrid.external.FullClassifyService.FilterType.ONLY_TERMS) {
-    		filter = SNS_FILTER_THESA;
-    	} else if (filterType == de.ingrid.external.FullClassifyService.FilterType.ONLY_LOCATIONS) {
-    		filter = SNS_FILTER_LOCATIONS;
-    	} else if (filterType == de.ingrid.external.FullClassifyService.FilterType.ONLY_EVENTS) {
-    		filter = SNS_FILTER_EVENTS;
-    	}
-		
-    	return filter;
-	}
+        } catch (Exception e) {
+            log.error( "Error calling snsClient.autoClassifyToUrl", e );
+        }
 
-	/** Determine language filter for SNS dependent from passed language !
-	 * @param language language from request, pass null if default language !
-	 * @return SNS language filter
-	 */
-	private String getSNSLanguageFilter(Locale language) {
-		// default is german !
-    	String langFilter = "de";
-    	if (language != null) {
-    		langFilter = language.getLanguage();
-    	}
-		
-    	return langFilter;
-	}
+        return resources;
+    }
 
-	private Topic[] getTopicsFromMapFragment(TopicMapFragment mapFragment) {
-		Topic[] topics = new Topic[0];	    
-	    if (null != mapFragment) {
-	    	topics = mapFragment.getTopicMap().getTopic();
-	    } else {
-	    	log.warn("TopicMapFragment is Null !!!?");
-	    }
+    /**
+     * Call SNS getHierachy. Map passed params to according SNS params.
+     * 
+     * @param url
+     *            defines the service url to get the hierarchy from
+     */
+    private Resource snsGetHierarchy(String url, String root, long depth, HierarchyDirection hierarchyDir, boolean includeSiblings, String langFilter) {
+        if (root == null) {
+            root = "scheme";
+        }
+        String direction = (hierarchyDir == HierarchyDirection.DOWN) ? "down" : "up";
 
-	    return topics;
-	}
+        Resource resource = null;
+        try {
+            if (url == null)
+                resource = snsClient.getHierachy( depth, direction, includeSiblings, langFilter, root );
+            else
+                resource = snsClient.getHierachy( new URL( url ), depth, direction, includeSiblings, langFilter, root );
+        } catch (Exception e) {
+            log.error( "Error calling snsClient.getHierachy with root=" + root, e );
+        }
+
+        return resource;
+    }
+
+    private String getSearchTypeFromQueryTerm(String queryTerm) {
+        String searchType = null;
+        // if query contains a wildcard, it will override the given matching
+        // type
+        if (queryTerm.startsWith( "*" ) && queryTerm.endsWith( "*" )) {
+            searchType = "contains";
+        } else if (queryTerm.startsWith( "*" )) {
+            searchType = "ends_with";
+        } else if (queryTerm.endsWith( "*" )) {
+            searchType = "begins_with";
+        }
+        return searchType;
+    }
+
+    /** Determine SearchType for SNS dependent from passed matching type. */
+    private String getSNSSearchType(de.ingrid.external.ThesaurusService.MatchingType matchingType, String queryTerm) {
+        // default is all locations !
+        String searchType = "begins_with";
+        String querySearchType = getSearchTypeFromQueryTerm( queryTerm );
+        if (querySearchType != null) {
+            searchType = querySearchType;
+        } else {
+            if (matchingType == de.ingrid.external.ThesaurusService.MatchingType.CONTAINS) {
+                searchType = "contains";
+            } else if (matchingType == de.ingrid.external.ThesaurusService.MatchingType.EXACT) {
+                searchType = "exact";
+            }
+        }
+
+        return searchType;
+    }
+
+    /** Determine SearchType for SNS dependent from passed matching type. */
+    private String getSNSSearchType(de.ingrid.external.GazetteerService.MatchingType matchingType, String queryTerm) {
+        String searchType = "begins_with";
+
+        String querySearchType = getSearchTypeFromQueryTerm( queryTerm );
+        if (querySearchType != null) {
+            searchType = querySearchType;
+        } else {
+            if (matchingType == de.ingrid.external.GazetteerService.MatchingType.CONTAINS) {
+                searchType = "contains";
+            } else if (matchingType == de.ingrid.external.GazetteerService.MatchingType.EXACT) {
+                searchType = "exact";
+            }
+        }
+
+        return searchType;
+    }
+
+    /** Determine SearchType for SNS dependent from passed matching type. */
+    private String getSNSSearchType(de.ingrid.external.ChronicleService.MatchingType matchingType, String queryTerm) {
+        // default is all locations !
+        String searchType = "begins_with";
+        String querySearchType = getSearchTypeFromQueryTerm( queryTerm );
+        if (querySearchType != null) {
+            searchType = querySearchType;
+        } else {
+            if (matchingType == de.ingrid.external.ChronicleService.MatchingType.CONTAINS) {
+                searchType = "contains";
+            } else if (matchingType == de.ingrid.external.ChronicleService.MatchingType.EXACT) {
+                searchType = "exact";
+            }
+        }
+
+        return searchType;
+    }
+
+    /**
+     * Determine language filter for SNS dependent from passed language !
+     * 
+     * @param language
+     *            language from request, pass null if default language !
+     * @return SNS language filter
+     */
+    private String getSNSLanguageFilter(Locale language) {
+        // default is german !
+        String langFilter = "de";
+        if (language != null) {
+            langFilter = language.getLanguage();
+        }
+
+        return langFilter;
+    }
+
+    /**
+     * So far the SNS-Service always delivers 40 results and you can only define the page. Moreover it is not possible to set more than one
+     * Collection to match the results. That brings the problem of paging. The only workaround here is to request all collections with all
+     * necessary pages and only extract "length" entries from the result. The formular is: pagesToFetch =
+     * ROUND((page*length)/staticPageNumCount) + ROUND(length/staticPageNumCount) + pageOffset E.g.: page=10, length=10: fetch for each
+     * collection/type the pages 0,1,2 (which returns 120 results for each collection (strict page results=40). Given we request 3
+     * collections this means we get max. 360 hits from which we only return 10 hits.
+     * 
+     */
+    @Override
+    public Event[] findEventsFromQueryTerm(String term, de.ingrid.external.ChronicleService.MatchingType matchingType, String[] inCollections, String dateStart, String dateEnd,
+            Locale lang, int page, int length) {
+        List<Event> events = new ArrayList<Event>();
+        int totalResults = 0;
+
+        String langFilter = getSNSLanguageFilter( lang );
+        String type = getSNSSearchType( matchingType, term );
+
+        // create an empty collection so that code below is executed!
+        if (inCollections == null)
+            inCollections = new String[] { "" };
+
+        try {
+            List<String> uniqueResults = new ArrayList<String>();
+            int maxPage = new Double( Math.floor( (page * length) / SNSClient.NUM_SEARCH_RESULTS ) ).intValue() + SNSClient.PAGE_START;
+            int extraPages = new Double( Math.floor( length / SNSClient.NUM_SEARCH_RESULTS ) ).intValue();
+            int start = new Long( (page * length) % SNSClient.NUM_SEARCH_RESULTS ).intValue();
+            int pos = 0;
+
+            // iterate over all collections or request more search results and
+            // filter afterwards
+            for (String collection : inCollections) {
+                int numResultsOfCollection = 0;
+                for (int p = 1; p <= (maxPage + extraPages); p++) {
+                    Resource eventsRes = snsClient.findEvents( term, type, collection, p, dateStart, dateEnd, langFilter, length );
+                    numResultsOfCollection = RDFUtils.getTotalResults( eventsRes.getModel() );
+
+                    // return after all requested hits are collected
+                    if (events.size() == length)
+                        break;
+
+                    // TODO: iterator is not sorted, should be result1, result2,
+                    // ...
+                    NodeIterator it = RDFUtils.getResults( eventsRes );
+                    while (it.hasNext()) {
+                        // only start to return results from correct page
+                        RDFNode eventNode = it.next();
+                        String eventId = RDFUtils.getEventId( eventNode.asResource() );
+                        // skip identical results
+                        if (uniqueResults.contains( eventId ))
+                            continue;
+                        if (start > pos++)
+                            continue;
+                        // get complete concept and map it to an event
+                        Resource eventRes = snsClient.getTerm( eventId, langFilter, FilterType.ONLY_EVENTS );
+                        events.add( snsMapper.mapToEvent( eventRes, langFilter ) );
+                        uniqueResults.add( eventId );
+                        // return after all requested hits are collected
+                        if (events.size() == length)
+                            break;
+                    }
+                }
+                totalResults += numResultsOfCollection;
+            }
+        } catch (RemoteException e) {
+            e.printStackTrace();
+            return new Event[0];
+        }
+        return events.toArray( new Event[totalResults] );
+    }
 
     @Override
-    public Term[] findTermsFromQueryTerm(String arg0, String arg1,
-            de.ingrid.external.ThesaurusService.MatchingType arg2, boolean arg3, Locale arg4) {
-        log.warn( "this method is not supported!" );
-        return null;
+    public Event[] getAnniversaries(String date, Locale lang) {
+        List<Event> events = new ArrayList<Event>();
+
+        String langFilter = getSNSLanguageFilter( lang );
+        try {
+            Resource eventsRes = snsClient.anniversary( date, langFilter );
+            events = snsMapper.mapToAnniversaries( eventsRes, langFilter );
+
+        } catch (RemoteException e) {
+            log.error( "Error when getting anniversaries!", e );
+            return new Event[0];
+        }
+        return events.toArray( new Event[events.size()] );
     }
 
     @Override
-    public TreeTerm[] getHierarchyNextLevel(String arg0, String arg1, Locale arg2) {
-        log.warn( "this method is not supported!" );
-        return null;
+    public Event getEvent(String eventId, Locale lang) {
+        String langFilter = getSNSLanguageFilter( lang );
+        Resource eventRes = snsClient.getTerm( eventId, langFilter, FilterType.ONLY_EVENTS );
+        return snsMapper.mapToEvent( eventRes, langFilter );
     }
 
-    @Override
-    public TreeTerm getHierarchyPathToTop(String arg0, String arg1, Locale arg2) {
-        log.warn( "this method is not supported!" );
-        return null;
+    private String getHtmlContent(URL url) {
+        String html = "";
+        try {
+            URLConnection urlConnection;
+            urlConnection = url.openConnection();
+            urlConnection.addRequestProperty( "accept", "text/html" );
+            urlConnection.addRequestProperty( "User-Agent", "Mozilla/5.0 (Windows NT 6.2; WOW64)" );
+
+            String contentType = "ISO-8859-1";
+            String urlContentType = urlConnection.getContentType();
+            if (urlContentType != null && urlContentType.contains( "charset=" ))
+                contentType = urlContentType.substring( urlContentType.indexOf( "charset=" ) + 8 );
+
+            BufferedReader dis = new BufferedReader( new InputStreamReader( urlConnection.getInputStream(), contentType ) );
+            String tmp = "";
+            while ((tmp = dis.readLine()) != null) {
+                html += " " + tmp;
+            }
+            dis.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return html;
     }
 }
