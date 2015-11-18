@@ -40,6 +40,7 @@ import com.hp.hpl.jena.rdf.model.NodeIterator;
 import com.hp.hpl.jena.rdf.model.RDFNode;
 import com.hp.hpl.jena.rdf.model.ResIterator;
 import com.hp.hpl.jena.rdf.model.Resource;
+import com.hp.hpl.jena.rdf.model.ResourceRequiredException;
 import com.hp.hpl.jena.rdf.model.Statement;
 import com.hp.hpl.jena.rdf.model.StmtIterator;
 
@@ -536,11 +537,16 @@ public class SNSMapper {
     	
     	StmtIterator moreInfo = RDFUtils.getFurtherInfo(eventRes);
     	while (moreInfo.hasNext()) {
-    		Link l = new LinkImpl();
-    		Resource info = moreInfo.next().getResource();
-    		l.setTitle(RDFUtils.getDctTitle(info));
-    		l.setLinkAddress(RDFUtils.getDctPage(info));
-    		result.addLink(l);
+    	    Statement nextInfo = moreInfo.next();
+    	    try {
+        		Link l = new LinkImpl();
+        		Resource info = nextInfo.getResource();
+        		l.setTitle(RDFUtils.getDctTitle(info));
+        		l.setLinkAddress(RDFUtils.getDctPage(info));
+        		result.addLink(l);
+    	    } catch (ResourceRequiredException ex) {
+    	        log.error( "Resource could not be extracted from 'seeAlso'-field, which contains: " + nextInfo.getString(), ex );
+    	    }
     	}
     	
     	return result;
