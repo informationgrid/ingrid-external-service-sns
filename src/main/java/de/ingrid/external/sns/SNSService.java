@@ -25,6 +25,7 @@ package de.ingrid.external.sns;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.rmi.RemoteException;
@@ -776,6 +777,9 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
                 totalResults += numResultsOfCollection;
             }
         } catch (RemoteException e) {
+            e.printStackTrace();
+            return new Event[0];
+        } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
             return new Event[0];
         }

@@ -29,6 +29,7 @@ package de.ingrid.external.sns;
 
 import java.io.FileNotFoundException;
 import java.io.OutputStreamWriter;
+import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
@@ -161,10 +162,10 @@ public class SNSClient {
         	// read the RDF/XML file
         	model.read(query);
         } catch (DoesNotExistException e) {
-        	log.error("The search-function does not exist: " + query);
+        	log.error("The search-function does not exist: " + query, e);
         	return null;
         } catch (Exception e) {
-        	log.error("The URI seems to have a problem: " + query);
+        	log.error("The URI seems to have a problem: " + query, e);
         	return null;
         }
 
@@ -203,10 +204,10 @@ public class SNSClient {
         	// read the RDF/XML file
         	model.read(query);
         } catch (DoesNotExistException e) {
-        	log.error("The term does not exist: " + query);
+        	log.error("The term does not exist: " + query, e);
         	return null;
         } catch (Exception e) {
-        	log.error("The URI seems to have a problem: " + query);
+        	log.error("The URI seems to have a problem: " + query, e);
         	return null;
         }
 
@@ -325,10 +326,10 @@ public class SNSClient {
         	// read the RDF/XML file
         	model.read(query);
         } catch (DoesNotExistException e) {
-        	log.error("The autoclassify-function does not exist: " + query);
+        	log.error("The autoclassify-function does not exist: " + query, e);
         	return null;
         } catch (Exception e) {
-        	log.error("The URI seems to have a problem: " + query);
+        	log.error("The URI seems to have a problem: " + query, e);
         	return null;
         }
 
@@ -374,12 +375,13 @@ public class SNSClient {
      * 
      * @return A topic map fragment.
      * @throws RemoteException
+	 * @throws UnsupportedEncodingException 
      * @see SearchType
      * @see FieldsType
      */
     public synchronized Resource findEvents(String queryParam, String searchType, String fieldsType,
             long offset, String at, String lang, int length)
-            throws RemoteException {
+            throws RemoteException, UnsupportedEncodingException {
     	
     	return findEvents(queryParam, searchType, fieldsType, offset, at, at, lang, length);
     }
@@ -408,12 +410,13 @@ public class SNSClient {
      * 
      * @return A topic map fragment.
      * @throws RemoteException
+     * @throws UnsupportedEncodingException 
      * @see SearchType
      * @see FieldsType
      */
     public synchronized Resource findEvents(String queryParam, String searchType, String inCollection,
             long offset, String from, String to, String lang, int length)
-            throws RemoteException {
+            throws RemoteException, UnsupportedEncodingException {
     	
     	Model model = ModelFactory.createDefaultModel();
     	
@@ -423,7 +426,7 @@ public class SNSClient {
     	String collParams = (inCollection == null || "".equals(inCollection)) ? "" : "&c=" + inCollection;
     	// TODO: use t=notes instead of t=pref_labels to get more search results
     	// however an error occurred when doing so (06.05.2014) 
-    	String params = "?t=notes&qt="+searchType+"&q=" + queryParam + "&date_min=" + from + 
+    	String params = "?t=notes&qt="+searchType+"&q=" + URLEncoder.encode(queryParam, "utf8") + "&date_min=" + from + 
     			"&date_max=" + to + collParams + "&l=" + "de" + "&page="+offset + "&for=concept";
         String query = getUrlByFilter( FilterType.ONLY_EVENTS ) + "search.rdf" + params;
         
@@ -435,10 +438,10 @@ public class SNSClient {
         	// read the RDF/XML file
         	model.read(query);
         } catch (DoesNotExistException e) {
-        	log.error("The search-function does not exist: " + query);
+        	log.error("The search-function does not exist: " + query, e);
         	return null;
         } catch (Exception e) {
-        	log.error("The URI seems to have a problem: " + query);
+        	log.error("The URI seems to have a problem: " + query, e);
         	return null;
         }
 
@@ -472,10 +475,10 @@ public class SNSClient {
         	// read the RDF/XML file
         	model.read(query);
         } catch (DoesNotExistException e) {
-        	log.error("The anniversary-function does not exist: " + query);
+        	log.error("The anniversary-function does not exist: " + query, e);
         	return null;
         } catch (Exception e) {
-        	log.error("The URI seems to have a problem: " + query);
+        	log.error("The URI seems to have a problem: " + query, e);
         	return null;
         }
 
@@ -555,7 +558,11 @@ public class SNSClient {
         // prepare terms as url-parameter
         String paramTerms = "";
         for (String term : terms) {
-			paramTerms += term + "+";
+			try {
+                paramTerms += URLEncoder.encode( term, "utf8" ) + "+";
+            } catch (UnsupportedEncodingException e) {
+                log.error( "Error during encoding url parameter: ", e );
+            }
 		}
         paramTerms = paramTerms.substring(0, paramTerms.length()-1);
         String query = getUrlByFilter( FilterType.ONLY_TERMS ) + lang + "/similar.rdf?terms=" + paramTerms;
@@ -568,10 +575,10 @@ public class SNSClient {
         	// read the RDF/XML file
         	model.read(query);
         } catch (DoesNotExistException e) {
-        	log.error("The search-function does not exist: " + query);
+        	log.error("The search-function does not exist: " + query, e);
         	return null;
         } catch (Exception e) {
-        	log.error("The URI seems to have a problem: " + query);
+        	log.error("The URI seems to have a problem: " + query, e);
         	return null;
         }
 
