@@ -103,6 +103,8 @@ public class SNSClientTest extends TestCase {
 		events = chronicalService.getAnniversaries("10.10.1978", lang);
 		assertTrue(events.length > 0);
 		for (Event event : events) {
+		    // INFO: one of the events has no title, but it's a problem with the SNS
+		    // => https://github.com/innoq/iqvoc_chronicle/issues/94
 			checkEvent(event);
 		}
 		
@@ -116,12 +118,12 @@ public class SNSClientTest extends TestCase {
 	}
 	
 	public void testGetEvent() throws RemoteException {
-		Event e = chronicalService.getEvent("http://sns.uba.de/chronik/t2a639eb3_12b99052384_-37ba", new Locale("de"));
+		Event e = chronicalService.getEvent("https://sns.uba.de/chronik/t2a639eb3_12b99052384_-37ba", new Locale("de"));
 		assertEquals(Date.valueOf("2010-10-05"), e.getTimeAt());
 		assertEquals(Date.valueOf("2010-10-05"), e.getTimeRangeFrom());
 		assertEquals(Date.valueOf("2010-10-05"), e.getTimeRangeTo());
 		assertEquals("activity", e.getTypeId());
-		assertEquals("http://sns.uba.de/chronik/t2a639eb3_12b99052384_-37ba", e.getId());
+		assertEquals("https://sns.uba.de/chronik/t2a639eb3_12b99052384_-37ba", e.getId());
 		assertEquals(2, e.getLinks().size());
 	}
 	

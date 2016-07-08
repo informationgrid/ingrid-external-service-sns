@@ -11,7 +11,7 @@
  * You may not use this work except in compliance with the Licence.
  * You may obtain a copy of the Licence at:
  * 
- * http://ec.europa.eu/idabc/eupl5
+ * https://ec.europa.eu/idabc/eupl5
  * 
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the Licence is distributed on an "AS IS" basis,
@@ -48,7 +48,7 @@ public class GazetteerTest extends TestCase {
         Location[] locations;
 
         // valid location in german, INCLUDE fromLocation
-        String locationId = "http://sns.uba.de/gazetteer/BERG41128"; // Großer Buchberg
+        String locationId = "https://sns.uba.de/gazetteer/BERG41128"; // Großer Buchberg
         Locale locale = Locale.GERMAN;
         locations = gazetteerService.getRelatedLocationsFromLocation( locationId, true, locale );
         assertEquals( 6, locations.length );
@@ -73,18 +73,18 @@ public class GazetteerTest extends TestCase {
         // assertTrue(locations.length > 0);
 
         // EXPIRED !!!! INCLUDE fromLocation ! BUT IS REMOVED BECAUSE EXPIRED !!!!
-        locationId = "http://sns.uba.de/gazetteer/GEMEINDE1515107014"; // Gehrden
+        locationId = "https://sns.uba.de/gazetteer/GEMEINDE1515107014"; // Gehrden
         locale = Locale.GERMAN;
         locations = gazetteerService.getRelatedLocationsFromLocation( locationId, true, locale );
         assertEquals( 5, locations.length );
         for (Location loc : locations) {
             checkLocation( loc );
-            assertFalse( "http://sns.uba.de/gazetteer/GEMEINDE0325300005".equals( loc.getId() ) );
+            assertFalse( "https://sns.uba.de/gazetteer/GEMEINDE0325300005".equals( loc.getId() ) );
             assertFalse( loc.getIsExpired() );
         }
 
         // valid location in german
-        locationId = "http://sns.uba.de/gazetteer/NATURPARK31";
+        locationId = "https://sns.uba.de/gazetteer/NATURPARK31";
         locations = gazetteerService.getRelatedLocationsFromLocation( locationId, true, locale );
         assertTrue( locations.length > 0 );
 
@@ -94,7 +94,7 @@ public class GazetteerTest extends TestCase {
         // assertTrue(locations.length > 0);
 
         // INVALID location in german
-        locationId = "http://sns.uba.de/gazetteer/wrong id";
+        locationId = "https://sns.uba.de/gazetteer/wrong id";
         locale = Locale.GERMAN;
         locations = gazetteerService.getRelatedLocationsFromLocation( locationId, true, locale );
         assertTrue( locations.length == 0 );
@@ -109,7 +109,7 @@ public class GazetteerTest extends TestCase {
         Location location;
 
         // valid location in german
-        String locationId = "http://sns.uba.de/gazetteer/BERG41128"; // Großer Buchberg
+        String locationId = "https://sns.uba.de/gazetteer/BERG41128"; // Großer Buchberg
         Locale locale = Locale.GERMAN;
         location = gazetteerService.getLocation( locationId, locale );
         checkLocation( location, locationId, "Gro\u00DFer Buchberg" );
@@ -130,14 +130,14 @@ public class GazetteerTest extends TestCase {
 		assertFalse(location.getIsExpired());*/
 
         // valid location. NOTICE: locale ignored
-        locationId = "http://sns.uba.de/gazetteer/NATURPARK31"; // Hessischer Spessart
+        locationId = "https://sns.uba.de/gazetteer/NATURPARK31"; // Hessischer Spessart
         location = gazetteerService.getLocation( locationId, locale );
         checkLocation( location, locationId, "Hessischer Spessart" );
         assertEquals( "Naturpark", location.getTypeName() );
         assertFalse( location.getIsExpired() );
 
         // valid location. NOTICE: locale ignored
-        locationId = "http://sns.uba.de/gazetteer/GEMEINDE0641200000"; // Frankfurt am Main
+        locationId = "https://sns.uba.de/gazetteer/GEMEINDE0641200000"; // Frankfurt am Main
         location = gazetteerService.getLocation( locationId, locale );
         checkLocation( location, locationId, "Frankfurt am Main" );
         assertEquals( "Gemeinde", location.getTypeName() );
@@ -151,14 +151,14 @@ public class GazetteerTest extends TestCase {
         assertFalse( location.getIsExpired() );
 
         // EXPIRED LOCATION !
-        locationId = "http://sns.uba.de/gazetteer/GEMEINDE1510100000"; // Dessau
+        locationId = "https://sns.uba.de/gazetteer/GEMEINDE1510100000"; // Dessau
         location = gazetteerService.getLocation( locationId, locale );
         checkLocation( location, locationId, "Dessau" );
         assertTrue( location.getIsExpired() );
         // TODO: successor is "Dessau-Roßlau"!
 
         // INVALID location
-        locationId = "http://sns.uba.de/gazetteer/wrong-id";
+        locationId = "https://sns.uba.de/gazetteer/wrong-id";
         locale = Locale.GERMAN;
         location = gazetteerService.getLocation( locationId, locale );
         assertNull( location );
@@ -177,13 +177,13 @@ public class GazetteerTest extends TestCase {
         assertTrue( locations.length > 0 );
         Location checkLocation = null;
         for (Location location : locations) {
-            if ("http://sns.uba.de/gazetteer/GEMEINDE1607103082".equals( location.getId() )) {
+            if ("https://sns.uba.de/gazetteer/GEMEINDE1607103082".equals( location.getId() )) {
                 checkLocation = location;
                 break;
             }
         }
         assertNotNull( checkLocation );
-        assertEquals( "http://sns.uba.de/gazetteer/GEMEINDE1607103082", checkLocation.getId() );
+        assertEquals( "https://sns.uba.de/gazetteer/GEMEINDE1607103082", checkLocation.getId() );
         assertEquals( "-location-admin-use6-", checkLocation.getTypeId() );
         assertEquals( "16071082", checkLocation.getNativeKey() );
 
@@ -282,15 +282,15 @@ public class GazetteerTest extends TestCase {
     }
 
     public final void testGetSuccessorFromExpired() {
-        Location location = gazetteerService.getLocation( "http://sns.uba.de/gazetteer/GEMEINDE1510100000", new Locale( "de" ) );
+        Location location = gazetteerService.getLocation( "https://sns.uba.de/gazetteer/GEMEINDE1510100000", new Locale( "de" ) );
         assertTrue( location.getIsExpired() );
         assertEquals( "2012-11-28", location.getExpiredDate() );
         assertEquals( 1, location.getSuccessorIds().length );
-        assertEquals( "http://sns.uba.de/gazetteer/_4e9d66f0-1b80-0130-d0e8-482a1437a069", location.getSuccessorIds()[0] );
+        assertEquals( "https://sns.uba.de/gazetteer/_4e9d66f0-1b80-0130-d0e8-482a1437a069", location.getSuccessorIds()[0] );
     }
 
     public final void testCheckTextEncoding() {
-        Location location = gazetteerService.getLocation( "http://sns.uba.de/gazetteer/BIOSPHAERE3", new Locale( "de" ) );
+        Location location = gazetteerService.getLocation( "https://sns.uba.de/gazetteer/BIOSPHAERE3", new Locale( "de" ) );
         assertEquals( "Biosphärenreservat", location.getTypeName() );
     }
 

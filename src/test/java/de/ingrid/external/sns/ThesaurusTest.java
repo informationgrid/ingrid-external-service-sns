@@ -99,8 +99,8 @@ public class ThesaurusTest extends TestCase {
 		Term term;
 
 		// DESCRIPTOR term in german
-		//String termId = "http://data.uba.de/umt/_00008424"; // Entwicklungshilfe
-		String termId = "http://sns.uba.de/umthes/_00007946"; // Emission
+		//String termId = "https://data.uba.de/umt/_00008424"; // Entwicklungshilfe
+		String termId = "https://sns.uba.de/umthes/_00007946"; // Emission
 		Locale locale = Locale.GERMAN;
 		term = thesaurusService.getTerm(termId, locale);
 		checkTerm(term, termId, TermType.DESCRIPTOR, "Emission");
@@ -111,7 +111,7 @@ public class ThesaurusTest extends TestCase {
 		// TODO: checkTerm(term, termId, TermType.DESCRIPTOR, "emission");
 		
 		// GEMET
-		termId = "http://sns.uba.de/umthes/_00028954";
+		termId = "https://sns.uba.de/umthes/_00028954";
 		locale = Locale.GERMAN;
 		term = thesaurusService.getTerm(termId, locale);
 		assertEquals("GEMETID9242", term.getAlternateId());
@@ -201,7 +201,7 @@ public class ThesaurusTest extends TestCase {
 		RelatedTerm[] relatedTerms;
 
 		// DESCRIPTOR term in german
-		String termId = "http://sns.uba.de/umthes/_00021949"; // Schrott
+		String termId = "https://sns.uba.de/umthes/_00021949"; // Schrott
 		Locale locale = Locale.GERMAN;
 		relatedTerms = thesaurusService.getRelatedTermsFromTerm(termId, locale);
 		assertTrue(relatedTerms.length > 0);
@@ -235,7 +235,7 @@ public class ThesaurusTest extends TestCase {
 		*/
 
 		// INVALID term
-		termId = "http://sns.uba.de/umthes/wrong-id";
+		termId = "https://sns.uba.de/umthes/wrong-id";
 		relatedTerms = thesaurusService.getRelatedTermsFromTerm(termId, locale);
 		assertNotNull(relatedTerms);
 		assertTrue(relatedTerms.length == 0);
@@ -264,7 +264,7 @@ public class ThesaurusTest extends TestCase {
 		// Top terms from explicit Url
 		termId = null; // TOP
 		locale = Locale.GERMAN;
-		treeTerms = thesaurusService.getHierarchyNextLevel("http://sns.uba.de/umthes/", termId, locale);
+		treeTerms = thesaurusService.getHierarchyNextLevel("https://sns.uba.de/umthes/", termId, locale);
 		assertTrue(treeTerms.length > 0);
 		for (TreeTerm treeTerm : treeTerms) {
 			// all top terms have null as parents and do have children !
@@ -272,17 +272,17 @@ public class ThesaurusTest extends TestCase {
 			checkTreeTerm(treeTerm, false, true);
 		}
 		
-		TreeTerm[] treeTermsForeign = thesaurusService.getHierarchyNextLevel("http://boden-params.herokuapp.com/", termId, locale);
-		assertTrue(treeTermsForeign.length > 0);
-		assertTrue(treeTerms[0].getId() != treeTermsForeign[0].getId());
-		for (TreeTerm treeTerm : treeTermsForeign) {
-			// all top terms have null as parents and do have children !
-			assertNull(treeTerm.getParents());
-			checkTreeTerm(treeTerm, false, true);
-		}
+//		TreeTerm[] treeTermsForeign = thesaurusService.getHierarchyNextLevel("http://boden-params.herokuapp.com/", termId, locale);
+//		assertTrue(treeTermsForeign.length > 0);
+//		assertTrue(treeTerms[0].getId() != treeTermsForeign[0].getId());
+//		for (TreeTerm treeTerm : treeTermsForeign) {
+//			// all top terms have null as parents and do have children !
+//			assertNull(treeTerm.getParents());
+//			checkTreeTerm(treeTerm, false, true);
+//		}
 				
 		// SUB TERMS of top term
-		termId = "http://sns.uba.de/umthes/_00049251"; // Atmosphäre und Klima
+		termId = "https://sns.uba.de/umthes/_00049251"; // Atmosphäre und Klima
 		locale = Locale.GERMAN;
 		treeTerms = thesaurusService.getHierarchyNextLevel(termId, locale);
 		assertTrue(treeTerms.length > 0);
@@ -294,7 +294,7 @@ public class ThesaurusTest extends TestCase {
 		}
 
 		// SUB TERMS of leaf
-		termId = "http://sns.uba.de/umthes/_00023126"; // Stadtklima
+		termId = "https://sns.uba.de/umthes/_00023126"; // Stadtklima
 		treeTerms = thesaurusService.getHierarchyNextLevel(termId, locale);
 		assertNotNull(treeTerms);
 		assertTrue(treeTerms.length == 0);
@@ -329,7 +329,7 @@ public class ThesaurusTest extends TestCase {
 		TreeTerm startTerm;
 
 		// PATH OF SUB TERM in german
-		String termId = "http://sns.uba.de/umthes/_00023126"; // Stadtklima 
+		String termId = "https://sns.uba.de/umthes/_00023126"; // Stadtklima 
 		Locale locale = Locale.GERMAN;
 		startTerm = thesaurusService.getHierarchyPathToTop(termId, locale);
 		// start term is term with requested id
@@ -342,7 +342,7 @@ public class ThesaurusTest extends TestCase {
 		}
 
 		// PATH OF TOP TERM
-		termId = "http://sns.uba.de/umthes/_00049251"; // Atmosphäre und Klima
+		termId = "https://sns.uba.de/umthes/_00049251"; // Atmosphäre und Klima
 		startTerm = thesaurusService.getHierarchyPathToTop(termId, locale);
 		// start term is term with requested id
 		assertEquals(termId, startTerm.getId());
@@ -350,7 +350,7 @@ public class ThesaurusTest extends TestCase {
 		assertNull(startTerm.getParents());
 		
 		// PATH OF DEEP SUB TERM
-		termId = "http://sns.uba.de/umthes/_00047197"; // Organo-Ton
+		termId = "https://sns.uba.de/umthes/_00047197"; // Organo-Ton
 		startTerm = thesaurusService.getHierarchyPathToTop(termId, locale);
 		// start term is term with requested id
 		assertEquals(termId, startTerm.getId());
@@ -375,7 +375,7 @@ public class ThesaurusTest extends TestCase {
 	}
 	
 	public final void testGetHierarchyPathToTopMultipleParents() {
-		String termId = "http://sns.uba.de/umthes/_00101147"; // Spreewald 
+		String termId = "https://sns.uba.de/umthes/_00101147"; // Spreewald 
 		Locale locale = Locale.GERMAN;
 		TreeTerm startTerm = thesaurusService.getHierarchyPathToTop(termId, locale);
 		// start term is term with requested id
@@ -385,19 +385,19 @@ public class ThesaurusTest extends TestCase {
 	}
 	
 	public void testHandleLabels() {
-	    String termId = "http://sns.uba.de/umthes/_00019331"; // has no name 
+	    String termId = "https://sns.uba.de/umthes/_00019331"; // has no name 
         Locale locale = Locale.GERMAN;
         Term startTerm = thesaurusService.getTerm(termId, locale);
         assertNotNull( startTerm );
         assertEquals( TermType.DESCRIPTOR, startTerm.getType() );
         
-        termId = "http://sns.uba.de/umthes/Photo-de"; // is a label 
+        termId = "https://sns.uba.de/umthes/Photo-de"; // is a label 
         startTerm = thesaurusService.getTerm(termId, locale);
         // labels should not be returned as a term!
         assertNull( startTerm );
         //assertEquals( TermType.NODE_LABEL, startTerm.getType() );
         
-        termId = "http://sns.uba.de/umthes/_00049280"; // is a top-term 
+        termId = "https://sns.uba.de/umthes/_00049280"; // is a top-term 
         startTerm = thesaurusService.getTerm(termId, locale);
         assertNotNull( startTerm );
         // TODO: check if it should be a NON-Descriptor actually!
