@@ -153,7 +153,9 @@ public class SNSClientTest extends TestCase {
 		assertNotNull(event);
 		assertNotNull(event.getId());
 		assertNotNull(event.getTitle());
-		assertNotNull(event.getTypeId());
+		// can be null unfortunately
+		// e.g.: https://sns.uba.de/chronik/de/concepts/_42ea37f4.html
+		// assertNotNull(event.getTypeId());
 		assertNotNull(event.getDescription());
 		//assertNotNull(event.getTimeAt());
 		//assertNotNull(event.getTimeRangeFrom());
