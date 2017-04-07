@@ -527,8 +527,12 @@ public class SNSMapper {
     	result.setTitle(RDFUtils.getName(eventRes, lang));
     	
     	String typeUrl = RDFUtils.getMemberOf(eventRes);
-    	String id = typeUrl.substring(typeUrl.lastIndexOf('/')+1);
-    	result.setTypeId(id);
+    	// some events do not seem to have a category
+    	// e.g.: https://sns.uba.de/chronik/de/concepts/_42ea37f4.html
+    	if (typeUrl != null) {
+        	String id = typeUrl.substring(typeUrl.lastIndexOf('/')+1);
+        	result.setTypeId(id);
+    	}
     	
     	result.setDescription(RDFUtils.getDefinition(eventRes, lang));
     	result.setTimeAt(convertToDate(RDFUtils.getDateStart(eventRes)));
