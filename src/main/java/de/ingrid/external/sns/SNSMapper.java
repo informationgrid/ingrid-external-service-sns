@@ -2,7 +2,7 @@
  * **************************************************-
  * ingrid-external-service-sns
  * ==================================================
- * Copyright (C) 2014 - 2015 wemove digital solutions GmbH
+ * Copyright (C) 2014 - 2017 wemove digital solutions GmbH
  * ==================================================
  * Licensed under the EUPL, Version 1.1 or – as soon they will be
  * approved by the European Commission - subsequent versions of the
@@ -527,8 +527,12 @@ public class SNSMapper {
     	result.setTitle(RDFUtils.getName(eventRes, lang));
     	
     	String typeUrl = RDFUtils.getMemberOf(eventRes);
-    	String id = typeUrl.substring(typeUrl.lastIndexOf('/')+1);
-    	result.setTypeId(id);
+    	// some events do not seem to have a category
+    	// e.g.: https://sns.uba.de/chronik/de/concepts/_42ea37f4.html
+    	if (typeUrl != null) {
+        	String id = typeUrl.substring(typeUrl.lastIndexOf('/')+1);
+        	result.setTypeId(id);
+    	}
     	
     	result.setDescription(RDFUtils.getDefinition(eventRes, lang));
     	result.setTimeAt(convertToDate(RDFUtils.getDateStart(eventRes)));
