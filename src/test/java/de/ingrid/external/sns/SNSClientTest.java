@@ -25,15 +25,16 @@ package de.ingrid.external.sns;
 import java.net.URL;
 import java.rmi.RemoteException;
 import java.sql.Date;
+import java.util.List;
 import java.util.Locale;
 import java.util.ResourceBundle;
 
-import junit.framework.TestCase;
-
+import com.hp.hpl.jena.rdf.model.RDFNode;
 import com.hp.hpl.jena.rdf.model.ResIterator;
 import com.hp.hpl.jena.rdf.model.Resource;
 
 import de.ingrid.external.om.Event;
+import junit.framework.TestCase;
 
 public class SNSClientTest extends TestCase {
 
@@ -87,10 +88,15 @@ public class SNSClientTest extends TestCase {
     }
     
     public void testFindEventsFromTo() throws Exception {
-        Resource eventsRes = snsClient.findEvents("Mauer", "contains", null, 
-        		0, "1972-07-22", "2001-07-22", "de", 10);
+        Resource eventsRes = snsClient.findEvents("", "contains", null, 0, "2019-01-01", "2019-08-29", "de", 10);
         assertNotNull(eventsRes);
         assertTrue( RDFUtils.getResults(eventsRes).toList().size() > 0);
+
+        // see https://redmine.wemove.com/issues/2236
+        eventsRes = snsClient.findEvents("", "contains", null, 0, "2019-01-25", "2019-01-25", "de", 10);
+        assertNotNull(eventsRes);
+        List<RDFNode> resultList = RDFUtils.getResults(eventsRes).toList();
+        assertTrue( resultList.size() > 0);
     }
 
 	public void testAnniversary() throws RemoteException {
@@ -122,7 +128,7 @@ public class SNSClientTest extends TestCase {
 			assertTrue(events[i].getId() != events2[i].getId());
 		}
 		
-		events = chronicalService.getAnniversaries("10.10.1978", lang);
+		events = chronicalService.getAnniversaries("1978-10-10", lang);
 		assertTrue(events.length > 0);
 		for (Event event : events) {
 		    // INFO: one of the events has no title, but it's a problem with the SNS
@@ -156,7 +162,12 @@ public class SNSClientTest extends TestCase {
 		// can be null unfortunately
 		// e.g.: https://sns.uba.de/chronik/de/concepts/_42ea37f4.html
 		// assertNotNull(event.getTypeId());
+
+        // can be null unfortunately
+		// Problems with Anniversary https://sns.uba.de/chronik/_35c66fd1 NO DESCRIPTION !!!
+		// when we pass other date it works
 		assertNotNull(event.getDescription());
+
 		//assertNotNull(event.getTimeAt());
 		//assertNotNull(event.getTimeRangeFrom());
 		//assertNotNull(event.getTimeRangeTo());
