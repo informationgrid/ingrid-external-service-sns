@@ -2,7 +2,7 @@
  * **************************************************-
  * ingrid-external-service-sns
  * ==================================================
- * Copyright (C) 2014 - 2017 wemove digital solutions GmbH
+ * Copyright (C) 2014 - 2019 wemove digital solutions GmbH
  * ==================================================
  * Licensed under the EUPL, Version 1.1 or – as soon they will be
  * approved by the European Commission - subsequent versions of the
@@ -425,8 +425,9 @@ public class SNSClient {
     	
     	String collParams = (inCollection == null || "".equals(inCollection)) ? "" : "&c=" + inCollection;
     	// TODO: use t=notes instead of t=pref_labels to get more search results
-    	// however an error occurred when doing so (06.05.2014) 
-    	String params = "?t=notes&qt="+searchType+"&q=" + URLEncoder.encode(queryParam, "utf8") + "&date_min=" + from + 
+    	// however an error occurred when doing so (06.05.2014)
+    	// 23.10.2019: Problem with t=notes use t=definitions see https://redmine.wemove.com/issues/2236
+    	String params = "?t=definitions&qt="+searchType+"&q=" + URLEncoder.encode(queryParam, "utf8") + "&date_min=" + from + 
     			"&date_max=" + to + collParams + "&l=" + "de" + "&page="+offset + "&for=concept";
         String query = getUrlByFilter( FilterType.ONLY_EVENTS ) + "search.rdf" + params;
         
