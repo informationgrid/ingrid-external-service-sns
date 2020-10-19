@@ -2,7 +2,7 @@
  * **************************************************-
  * ingrid-external-service-sns
  * ==================================================
- * Copyright (C) 2014 - 2019 wemove digital solutions GmbH
+ * Copyright (C) 2014 - 2020 wemove digital solutions GmbH
  * ==================================================
  * Licensed under the EUPL, Version 1.1 or – as soon they will be
  * approved by the European Commission - subsequent versions of the
@@ -36,7 +36,7 @@ import com.hp.hpl.jena.rdf.model.Statement;
 import com.hp.hpl.jena.rdf.model.StmtIterator;
 
 public class RDFUtils {
-    
+
     public static String getName(Resource res, String lang) {
 		RDFNode node = getObject(res, "skos", "prefLabel", lang);
 		if (node == null) node = getObject(res, "skosxl", "prefLabel", lang);
@@ -45,13 +45,13 @@ public class RDFUtils {
 		if (node == null) node = getObject(res, "skos", "altLabel", lang);
 		// for autoclassify results
 		if (node == null) node = getObject(res, "dct", "title");
-		
+
         if (node != null) {
             return node.asNode().getLiteralValue().toString();
         }
         return null;
 	}
-    
+
     public static String getId(Resource res) {
 		RDFNode node = getObject(res, "sdc", "link");
         if (node != null) {
@@ -60,22 +60,22 @@ public class RDFUtils {
         return res.getURI();
 
 	}
-    
+
     public static NodeIterator getChildren(Model model) {
         return getObjects(model, "skos", "narrower");
     }
     public static ResIterator getChildrenAsRes(Resource resource) {
     	return getResources(resource.getModel(), "skos", "narrower");
     }
-    
+
     public static StmtIterator getChildren(Resource res) {
         return getObjects(res, "skos", "narrower");
     }
-    
+
     public static NodeIterator getMembers(Model model) {
         return getObjects(model, "skos", "member");
     }
-    
+
 	public static NodeIterator getTopConcepts(Model model) {
 		return getObjects(model, "skos", "hasTopConcept");
 	}
@@ -85,19 +85,19 @@ public class RDFUtils {
 	public static boolean isTopConcept(Resource res) {
 		return getObject(res, "skos", "topConceptOf") != null;
 	}
-    
+
     public static RDFNode getParent(Model model) {
         return getObject(model, "skos", "broader");
     }
-    
+
     public static RDFNode getParent(Resource resource) {
     	return getObject(resource, "skos", "broader");
     }
-    
+
     public static StmtIterator getParents(Resource resource) {
     	return getObjects(resource, "skos", "broader");
     }
-    
+
     private static RDFNode getObject(Model model, String namespace, String name) {
         NodeIterator it = getObjects(model, namespace, name);
         if (it.hasNext()) {
@@ -105,14 +105,14 @@ public class RDFUtils {
         }
         return null;
     }
-    
+
     private static RDFNode getObject(Resource res, String namespace, String name) {
     	String nsURI = res.getModel().getNsPrefixURI(namespace);
         Property prop = res.getModel().createProperty(nsURI + name);
         Statement stmt = res.getProperty(prop);
         return stmt != null ? stmt.getObject() : null;
     }
-    
+
     private static RDFNode getObject(Resource res, String namespace, String name, String lang) {
     	String nsURI = res.getModel().getNsPrefixURI(namespace);
     	if ( nsURI == null ) nsURI = namespace;
@@ -130,7 +130,7 @@ public class RDFUtils {
         }
         return null;
     }
-    
+
     private static NodeIterator getObjects(Model model, String namespace, String name) {
         String nsURI = model.getNsPrefixURI(namespace);
         Property prop = model.createProperty(nsURI + name);
@@ -157,9 +157,12 @@ public class RDFUtils {
 		List<String> labels = new ArrayList<String>();
 		StmtIterator stmts = getObjects(searchResults, "skos", "altLabel");
 		if (!stmts.hasNext()) {
-		    stmts = getObjects(searchResults, "skosxl", "altLabel");		    
+		    stmts = getObjects(searchResults, "skosxl", "altLabel");
 		}
-		
+		if (!stmts.hasNext()) {
+		    stmts = getObjects(searchResults, "skos", "usedForCombination");
+		}
+
 		while (stmts.hasNext()) {
         	Statement stmt = stmts.next();
         	try {
@@ -172,11 +175,11 @@ public class RDFUtils {
         }
 		return labels;
 	}
-	
+
 	public static ResIterator getConcepts(Model model) {
 		return getResources(model, "rdf", "type");
 	}
-	
+
 	public static String getType(Resource res) {
 	    RDFNode node = getObject(res, "rdf", "type");
 	    if (node != null) {
@@ -184,7 +187,7 @@ public class RDFUtils {
         }
 	    return null;
 	}
-	
+
 	public static String getDefinition(Resource res, String lang) {
 		RDFNode node = getObject(res, "skos", "definition", lang);
         if (node != null) {
@@ -268,7 +271,7 @@ public class RDFUtils {
 	}
 
 	public static StmtIterator getFurtherInfo(Resource res) {
-		
+
 		return getObjects(res, "rdfs", "seeAlso");
 	}
 
@@ -324,7 +327,7 @@ public class RDFUtils {
             Statement successor = successors.next();
             succList.add( successor.getObject().asNode().getURI() );
         }
-        
+
         return succList.toArray(new String[0]);
     }
 
