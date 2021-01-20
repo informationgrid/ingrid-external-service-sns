@@ -33,6 +33,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.rmi.RemoteException;
 
 import org.apache.log4j.Logger;
@@ -268,7 +269,7 @@ public class SNSClient {
         
         // send the document data to analyze
         OutputStreamWriter writer = new OutputStreamWriter(connection.getOutputStream());
-        String content = "content=" + document;
+        String content = URLEncoder.encode("content=" + document, StandardCharsets.UTF_8.toString());
         writer.write(content);
         writer.flush();
         
