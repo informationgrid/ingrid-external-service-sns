@@ -269,7 +269,9 @@ public class SNSClient {
         
         // send the document data to analyze
         OutputStreamWriter writer = new OutputStreamWriter(connection.getOutputStream());
-        String content = URLEncoder.encode("content=" + document, StandardCharsets.UTF_8.toString());
+        String content = "content=" + document;
+        // replace all '%' as the SNS returns 400 Bad Request otherwise REDMINE-2321
+        content = content.replaceAll("%", " ");
         writer.write(content);
         writer.flush();
         
