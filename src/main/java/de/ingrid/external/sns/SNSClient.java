@@ -2,7 +2,7 @@
  * **************************************************-
  * ingrid-external-service-sns
  * ==================================================
- * Copyright (C) 2014 - 2020 wemove digital solutions GmbH
+ * Copyright (C) 2014 - 2021 wemove digital solutions GmbH
  * ==================================================
  * Licensed under the EUPL, Version 1.1 or – as soon they will be
  * approved by the European Commission - subsequent versions of the
@@ -33,6 +33,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.rmi.RemoteException;
 
 import org.apache.log4j.Logger;
@@ -269,6 +270,8 @@ public class SNSClient {
         // send the document data to analyze
         OutputStreamWriter writer = new OutputStreamWriter(connection.getOutputStream());
         String content = "content=" + document;
+        // replace all '%' as the SNS returns 400 Bad Request otherwise REDMINE-2321
+        content = content.replaceAll("%", " ");
         writer.write(content);
         writer.flush();
         

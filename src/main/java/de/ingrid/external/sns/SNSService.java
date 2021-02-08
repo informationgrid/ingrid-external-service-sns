@@ -2,17 +2,17 @@
  * **************************************************-
  * ingrid-external-service-sns
  * ==================================================
- * Copyright (C) 2014 - 2020 wemove digital solutions GmbH
+ * Copyright (C) 2014 - 2021 wemove digital solutions GmbH
  * ==================================================
  * Licensed under the EUPL, Version 1.1 or – as soon they will be
  * approved by the European Commission - subsequent versions of the
  * EUPL (the "Licence");
- * 
+ *
  * You may not use this work except in compliance with the Licence.
  * You may obtain a copy of the Licence at:
- * 
+ *
  * http://ec.europa.eu/idabc/eupl5
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the Licence is distributed on an "AS IS" basis,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -538,7 +538,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 
     /**
      * Call SNS findTopics. Map passed params to according SNS params.
-     * 
+     *
      * @param url
      *            defines the service url to search in
      */
@@ -560,8 +560,9 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
         try {
             if (filter == null || filter == FilterType.ONLY_TERMS)
                 resources[0] = snsClient.autoClassify( text, analyzeMaxWords, FilterType.ONLY_TERMS, ignoreCase, langFilter );
-            if (filter == null || filter == FilterType.ONLY_LOCATIONS)
-                resources[1] = snsClient.autoClassify( text, analyzeMaxWords, FilterType.ONLY_LOCATIONS, ignoreCase, langFilter );
+            // no gazetteer anymore since May 2020
+//            if (filter == null || filter == FilterType.ONLY_LOCATIONS)
+//                resources[1] = snsClient.autoClassify( text, analyzeMaxWords, FilterType.ONLY_LOCATIONS, ignoreCase, langFilter );
             if (filter == null || filter == FilterType.ONLY_EVENTS)
                 resources[2] = snsClient.autoClassify( text, analyzeMaxWords, FilterType.ONLY_EVENTS, ignoreCase, langFilter );
         } catch (Exception e) {
@@ -572,7 +573,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     }
 
     /**
-     * 
+     *
      * @param url
      *            is the url to analyze
      * @param langFilter
@@ -604,7 +605,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 
     /**
      * Call SNS getHierachy. Map passed params to according SNS params.
-     * 
+     *
      * @param url
      *            defines the service url to get the hierarchy from
      */
@@ -697,7 +698,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 
     /**
      * Determine language filter for SNS dependent from passed language !
-     * 
+     *
      * @param language
      *            language from request, pass null if default language !
      * @return SNS language filter
@@ -719,7 +720,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
      * ROUND((page*length)/staticPageNumCount) + ROUND(length/staticPageNumCount) + pageOffset E.g.: page=10, length=10: fetch for each
      * collection/type the pages 0,1,2 (which returns 120 results for each collection (strict page results=40). Given we request 3
      * collections this means we get max. 360 hits from which we only return 10 hits.
-     * 
+     *
      */
     @Override
     public Event[] findEventsFromQueryTerm(String term, de.ingrid.external.ChronicleService.MatchingType matchingType, String[] inCollections, String dateStart, String dateEnd,
