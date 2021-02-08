@@ -7,12 +7,12 @@
  * Licensed under the EUPL, Version 1.1 or – as soon they will be
  * approved by the European Commission - subsequent versions of the
  * EUPL (the "Licence");
- * 
+ *
  * You may not use this work except in compliance with the Licence.
  * You may obtain a copy of the Licence at:
- * 
+ *
  * http://ec.europa.eu/idabc/eupl5
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the Licence is distributed on an "AS IS" basis,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -31,11 +31,14 @@ import de.ingrid.external.FullClassifyService.FilterType;
 import de.ingrid.external.om.FullClassifyResult;
 import de.ingrid.external.om.IndexedDocument;
 import junit.framework.TestCase;
+import org.junit.Ignore;
 
+// Chronic and gazetteer not supported anymore by SNS
+@Ignore
 public class FullClassifyTest extends TestCase {
-	
+
 	private FullClassifyService fullClassifyService;
-	
+
 	public void setUp() {
 		SNSService snsService = new SNSService();
 		try {
@@ -45,13 +48,13 @@ public class FullClassifyTest extends TestCase {
 		}
 		fullClassifyService = snsService;
 	}
-	
+
 	public final void testAutoClassifyURL() throws MalformedURLException {
 		FullClassifyResult result;
 
 		// www.portalu.de, FULL DATA
 		// Problems fetching portalu ??????
-//		URL url = new URL ("http://www.portalu.de");			
+//		URL url = new URL ("http://www.portalu.de");
 //		URL url = new URL ("http://www.wemove.com");
 		URL url = new URL ("http://www.spiegel.de/");
 //		URL url = new URL ("http://antezeta.com/");
@@ -64,7 +67,7 @@ public class FullClassifyTest extends TestCase {
 		checkFullClassifyResult(result, url);
 		assertTrue(result.getTerms().size() > 0);
 		assertTrue(result.getLocations().size() > 0);
-		// may have NO EVENTS ? 
+		// may have NO EVENTS ?
 //		assertTrue(result.getEvents().size() > 0);
 		System.out.println("NUMBER OF EVENTS: " + result.getEvents().size());
 
@@ -84,16 +87,16 @@ public class FullClassifyTest extends TestCase {
 
 		// ONLY EVENTS
 		result = fullClassifyService.autoClassifyURL(url, analyzeMaxWords, ignoreCase, FilterType.ONLY_EVENTS, locale);
-		// may have NO EVENTS ? 
+		// may have NO EVENTS ?
 		System.out.println("NO checkFullClassifyResult(), PROBLEMS WITH EVENTS ?");
 //		checkFullClassifyResult(result, url);
 		assertTrue(result.getTerms().size() == 0);
 		assertTrue(result.getLocations().size() == 0);
-		// may have NO EVENTS ? 
+		// may have NO EVENTS ?
 //		assertTrue(result.getEvents().size() > 0);
 		System.out.println("NUMBER OF EVENTS: " + result.getEvents().size());
 	}
-	
+
 	public final void testAutoClassifyText() throws MalformedURLException {
 		FullClassifyResult result;
 
@@ -131,7 +134,7 @@ public class FullClassifyTest extends TestCase {
 //		assertEquals(0, result.getLocations().size());
 //		assertTrue(result.getEvents().size() > 0);
 	}
-	
+
 	private void checkFullClassifyResult(FullClassifyResult result) {
 		assertNotNull(result);
 		//checkIndexedDocument(result.getIndexedDocument());
