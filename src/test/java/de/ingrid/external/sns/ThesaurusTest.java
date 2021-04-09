@@ -321,7 +321,8 @@ public class ThesaurusTest extends TestCase {
                     break;
                 }
             }
-            assertTrue( "the following parent has not been found in the hierarchy: " + expectedParent, found );
+            String currentTermName = currentTerm == null ? "" : currentTerm.get(0).getName();
+            assertTrue( "the following parent has not been found in the hierarchy: " + expectedParent + " but was: " + currentTermName, found );
         }
 	}
 	
@@ -354,7 +355,7 @@ public class ThesaurusTest extends TestCase {
 		startTerm = thesaurusService.getHierarchyPathToTop(termId, locale);
 		// start term is term with requested id
 		assertEquals(termId, startTerm.getId());
-		String[] expectedPath = {"Organo-Ton", "Bentonit", "Ton [Mineral]", "Sedimentgestein", "Gestein", "Mineral", "[Produkte, Materialien, Werkstoffe]"};
+		String[] expectedPath = {"Organo-Ton", "Bentonit", "Tonstein", "Sedimentgestein", "Gestein", "Naturstoff", "Chemischer Stoff", "[Chemische Stoffe und Prozesse]"};
 		assertHierarchyPath( expectedPath, startTerm );
 		
 		
