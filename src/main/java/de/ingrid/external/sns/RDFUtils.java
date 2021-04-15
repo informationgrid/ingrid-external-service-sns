@@ -7,12 +7,12 @@
  * Licensed under the EUPL, Version 1.1 or – as soon they will be
  * approved by the European Commission - subsequent versions of the
  * EUPL (the "Licence");
- * 
+ *
  * You may not use this work except in compliance with the Licence.
  * You may obtain a copy of the Licence at:
- * 
+ *
  * http://ec.europa.eu/idabc/eupl5
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the Licence is distributed on an "AS IS" basis,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -253,19 +253,25 @@ public class RDFUtils {
 	}
 
 	public static String getDateStart(Resource res) {
-		Resource temporalRes = getObject(res, "dct", "temporal").asResource();
-		RDFNode node = getObject(temporalRes, "dct", "start");
-        if (node != null) {
-            return node.asNode().getLiteralValue().toString();
-        }
+		RDFNode object = getObject(res, "dct", "temporal");
+		if (object != null) {
+			Resource temporalRes = object.asResource();
+			RDFNode node = getObject(temporalRes, "dct", "start");
+			if (node != null) {
+				return node.asNode().getLiteralValue().toString();
+			}
+		}
 		return null;
 	}
 
 	public static String getDateEnd(Resource res) {
-		Resource temporalRes = getObject(res, "dct", "temporal").asResource();
-		RDFNode node = getObject(temporalRes, "dct", "end");
-		if (node != null) {
-			return node.asNode().getLiteralValue().toString();
+		RDFNode object = getObject(res, "dct", "temporal");
+		if (object != null) {
+			Resource temporalRes = object.asResource();
+			RDFNode node = getObject(temporalRes, "dct", "end");
+			if (node != null) {
+				return node.asNode().getLiteralValue().toString();
+			}
 		}
 		return null;
 	}
