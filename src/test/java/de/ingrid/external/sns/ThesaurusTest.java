@@ -381,7 +381,7 @@ public class ThesaurusTest extends TestCase {
 		TreeTerm startTerm = thesaurusService.getHierarchyPathToTop(termId, locale);
 		// start term is term with requested id
 		assertEquals(termId, startTerm.getId());
-        String[] expectedPath = {"Spreewald", "[Deutsche Biosphärenreservate]", "Bundesrepublik Deutschland", "Mitteleuropa", "Europa"};
+        String[] expectedPath = {"Spreewald", "[Deutsche Biosphärenreservate]", "[Biosphärenreservate]", "Großschutzgebiet"};
 		assertHierarchyPath( expectedPath, startTerm );
 	}
 	
