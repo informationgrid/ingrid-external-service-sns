@@ -62,7 +62,10 @@ public class ThesaurusTest extends TestCase {
 		assertNotNull(terms);
 		assertEquals(40, terms.length);
 		for (Term term : terms) {
-			checkTerm(term, null, null, null);
+			// skip certain entry, since this one is deprecated and has no name anymore
+			if (!term.getId().equals("https://sns.uba.de/umthes/_00027371")) {
+				checkTerm(term, null, null, null);
+			}
 		}
 
 		matchingType = MatchingType.EXACT;
