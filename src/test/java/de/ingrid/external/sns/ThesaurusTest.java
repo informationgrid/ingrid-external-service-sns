@@ -2,7 +2,7 @@
  * **************************************************-
  * ingrid-external-service-sns
  * ==================================================
- * Copyright (C) 2014 - 2021 wemove digital solutions GmbH
+ * Copyright (C) 2014 - 2022 wemove digital solutions GmbH
  * ==================================================
  * Licensed under the EUPL, Version 1.1 or – as soon they will be
  * approved by the European Commission - subsequent versions of the
@@ -62,7 +62,10 @@ public class ThesaurusTest extends TestCase {
 		assertNotNull(terms);
 		assertEquals(40, terms.length);
 		for (Term term : terms) {
-			checkTerm(term, null, null, null);
+			// skip certain entry, since this one is deprecated and has no name anymore
+			if (!term.getId().equals("https://sns.uba.de/umthes/_00027371")) {
+				checkTerm(term, null, null, null);
+			}
 		}
 
 		matchingType = MatchingType.EXACT;
@@ -381,7 +384,7 @@ public class ThesaurusTest extends TestCase {
 		TreeTerm startTerm = thesaurusService.getHierarchyPathToTop(termId, locale);
 		// start term is term with requested id
 		assertEquals(termId, startTerm.getId());
-        String[] expectedPath = {"Spreewald", "[Deutsche Biosphärenreservate]", "Bundesrepublik Deutschland", "Mitteleuropa", "Europa"};
+        String[] expectedPath = {"Spreewald", "[Deutsche Biosphärenreservate]", "[Biosphärenreservate]", "Großschutzgebiet"};
 		assertHierarchyPath( expectedPath, startTerm );
 	}
 	
