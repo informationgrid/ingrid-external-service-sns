@@ -47,12 +47,13 @@
       <artifactId>log4j-core</artifactId>
       <version>2.19.0</version>
     </dependency>
-    <!-- End of JENA libs -->
     <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>4.13.1</version>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>5.9.1</version>
+      <scope>test</scope>
     </dependency>
+    <!-- End of JENA libs -->
   </dependencies>
   <build>
     <plugins>
@@ -71,11 +72,11 @@
         <version>4.36.0</version>
         <configuration>
           <activeRecipes>
-                              <recipe>org.openrewrite.java.logging.log4j.Log4j1ToLog4j2</recipe>
-<!--            <recipe>org.openrewrite.java.testing.junit5.JUnit4to5Migration</recipe>-->
-<!--            <recipe>org.openrewrite.java.testing.junit5.CleanupAssertions</recipe>-->
-<!--            <recipe>org.openrewrite.java.testing.junit5.CleanupJUnitImports</recipe>-->
-<!--            <recipe>org.openrewrite.java.testing.junit5.ExpectedExceptionToAssertThrows</recipe>-->
+<!--                              <recipe>org.openrewrite.java.logging.log4j.Log4j1ToLog4j2</recipe>-->
+            <recipe>org.openrewrite.java.testing.junit5.JUnit4to5Migration</recipe>
+            <recipe>org.openrewrite.java.testing.junit5.CleanupAssertions</recipe>
+            <recipe>org.openrewrite.java.testing.junit5.CleanupJUnitImports</recipe>
+            <recipe>org.openrewrite.java.testing.junit5.ExpectedExceptionToAssertThrows</recipe>
           </activeRecipes>
         </configuration>
         <dependencies>

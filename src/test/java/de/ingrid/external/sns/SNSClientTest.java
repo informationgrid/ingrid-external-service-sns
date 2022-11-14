@@ -34,13 +34,19 @@ import com.hp.hpl.jena.rdf.model.ResIterator;
 import com.hp.hpl.jena.rdf.model.Resource;
 
 import de.ingrid.external.om.Event;
-import junit.framework.TestCase;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-public class SNSClientTest extends TestCase {
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+public class SNSClientTest {
 
 	private SNSClient snsClient;
 	private SNSService chronicalService;
 
+	@BeforeEach
 	public void setUp() {
 		ResourceBundle resourceBundle = ResourceBundle.getBundle("sns");
 		
@@ -65,15 +71,17 @@ public class SNSClientTest extends TestCase {
 			e.printStackTrace();
 		}
 	}
-	
+
+	@Test
 	public void testFindEventsAtError() throws Exception { 
 	    //http://sns.uba.de/chronik/t7df45747_12f9d9eeddd_-7a46
 	    // get all events by setting date to null
         Resource eventsRes = snsClient.getTermByUri( "http://sns.uba.de/chronik/", "http://sns.uba.de/chronik/t7df45747_12f9d9eeddd_-7a46", "de" ); 
         assertNotNull( eventsRes );
 	}
-	
-    public void testFindEventsAt() throws Exception {
+
+	@Test
+	public void testFindEventsAt() throws Exception {
     	// get all events by setting date to null
     	Resource eventsRes = snsClient.findEvents("wasser", "contains", null, 
         		0, null, "de", 10);
@@ -86,8 +94,9 @@ public class SNSClientTest extends TestCase {
         assertNotNull(eventsRes);
         assertEquals(1, RDFUtils.getResults(eventsRes).toList().size());
     }
-    
-    public void testFindEventsFromTo() throws Exception {
+
+	@Test
+	public void testFindEventsFromTo() throws Exception {
         Resource eventsRes = snsClient.findEvents("", "contains", null, 0, "2019-01-01", "2019-08-29", "de", 10);
         assertNotNull(eventsRes);
         assertTrue( RDFUtils.getResults(eventsRes).toList().size() > 0);
@@ -99,6 +108,7 @@ public class SNSClientTest extends TestCase {
         assertTrue( resultList.size() > 0);
     }
 
+	@Test
 	public void testAnniversary() throws RemoteException {
 		// Deutsche Ereignisse
 		Resource res = snsClient.anniversary("2013-01-01", "de");
@@ -110,7 +120,8 @@ public class SNSClientTest extends TestCase {
 		resIt = RDFUtils.getConcepts(res.getModel());
 		assertTrue(resIt.toList().size() > 0);
 	}
-	
+
+	@Test
 	public void testGetEventTerm() throws RemoteException {
 		// Deutsche Ereignisse
 		Locale lang = new Locale("de");
@@ -144,7 +155,8 @@ public class SNSClientTest extends TestCase {
 		resIt = RDFUtils.getConcepts(res.getModel());
 		assertTrue(resIt.toList().size() > 0);*/
 	}
-	
+
+	@Test
 	public void testGetEvent() throws RemoteException {
 		Event e = chronicalService.getEvent("https://sns.uba.de/chronik/t2a639eb3_12b99052384_-37ba", new Locale("de"));
 		assertEquals(Date.valueOf("2010-10-05"), e.getTimeAt());
