@@ -36,7 +36,8 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.rmi.RemoteException;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import com.hp.hpl.jena.rdf.model.Model;
 import com.hp.hpl.jena.rdf.model.ModelFactory;
@@ -55,7 +56,7 @@ import de.ingrid.external.FullClassifyService.FilterType;
  */
 public class SNSClient {
 
-	private final static Logger log = Logger.getLogger(SNSClient.class);	
+	private final static Logger log = LogManager.getLogger(SNSClient.class);	
 	
 	public static final int MAX_HIERARCHY_DEPTH = 4;
 	
@@ -156,17 +157,17 @@ public class SNSClient {
        	query = host + "search.rdf?" + params;
        	
        	if (log.isDebugEnabled()) {
-            log.debug( "Searching by: " + query );
+            log.debug("Searching by: {}", query);
         }
         
         try {
         	// read the RDF/XML file
         	model.read(query);
         } catch (DoesNotExistException e) {
-        	log.error("The search-function does not exist: " + query, e);
+        	log.error("The search-function does not exist: {}", query, e);
         	return null;
         } catch (Exception e) {
-        	log.error("The URI seems to have a problem: " + query, e);
+        	log.error("The URI seems to have a problem: {}", query, e);
         	return null;
         }
 
@@ -198,17 +199,17 @@ public class SNSClient {
         String query = HtmlUtils.prepareUrl( uri ) + lang + type + termId.substring(pos).trim() + ".rdf";
         
         if (log.isDebugEnabled()) {
-            log.debug( "Fetching term from: " + query );
+            log.debug("Fetching term from: {}", query);
         }
 
         try {
         	// read the RDF/XML file
         	model.read(query);
         } catch (DoesNotExistException e) {
-        	log.error("The term does not exist: " + query, e);
+        	log.error("The term does not exist: {}", query, e);
         	return null;
         } catch (Exception e) {
-        	log.error("The URI seems to have a problem: " + query, e);
+        	log.error("The URI seems to have a problem: {}", query, e);
         	return null;
         }
 
@@ -280,7 +281,7 @@ public class SNSClient {
         try {
             model.read(connection.getInputStream(), null);
         } catch (FileNotFoundException e) {
-            log.warn("The autoClassify-Service for type: " + type + " seems not to be available: " + e.getMessage());
+            log.warn("The autoClassify-Service for type: {} seems not to be available: {}", type, e.getMessage());
             return null;
         }
         
@@ -322,17 +323,17 @@ public class SNSClient {
         String query = getUrlByFilter(type) + lang + params;
         
         if (log.isDebugEnabled()) {
-            log.debug( "AutoClassify by: " + query );
+            log.debug("AutoClassify by: {}", query);
         }
 
         try {
         	// read the RDF/XML file
         	model.read(query);
         } catch (DoesNotExistException e) {
-        	log.error("The autoclassify-function does not exist: " + query, e);
+        	log.error("The autoclassify-function does not exist: {}", query, e);
         	return null;
         } catch (Exception e) {
-        	log.error("The URI seems to have a problem: " + query, e);
+        	log.error("The URI seems to have a problem: {}", query, e);
         	return null;
         }
 
@@ -435,17 +436,17 @@ public class SNSClient {
         String query = getUrlByFilter( FilterType.ONLY_EVENTS ) + "search.rdf" + params;
         
         if (log.isDebugEnabled()) {
-            log.debug( "Searching for Events with: " + query );
+            log.debug("Searching for Events with: {}", query);
         }
 
         try {
         	// read the RDF/XML file
         	model.read(query);
         } catch (DoesNotExistException e) {
-        	log.error("The search-function does not exist: " + query, e);
+        	log.error("The search-function does not exist: {}", query, e);
         	return null;
         } catch (Exception e) {
-        	log.error("The URI seems to have a problem: " + query, e);
+        	log.error("The URI seems to have a problem: {}", query, e);
         	return null;
         }
 
@@ -472,17 +473,17 @@ public class SNSClient {
         String query = getUrlByFilter( FilterType.ONLY_EVENTS ) + lang + "/anniversary.rdf?date=" + date;
         
         if (log.isDebugEnabled()) {
-            log.debug( "Getting anniversary from: " + query );
+            log.debug("Getting anniversary from: {}", query);
         }
 
         try {
         	// read the RDF/XML file
         	model.read(query);
         } catch (DoesNotExistException e) {
-        	log.error("The anniversary-function does not exist: " + query, e);
+        	log.error("The anniversary-function does not exist: {}", query, e);
         	return null;
         } catch (Exception e) {
-        	log.error("The URI seems to have a problem: " + query, e);
+        	log.error("The URI seems to have a problem: {}", query, e);
         	return null;
         }
 
@@ -572,17 +573,17 @@ public class SNSClient {
         String query = getUrlByFilter( FilterType.ONLY_TERMS ) + lang + "/similar.rdf?terms=" + paramTerms;
 
         if (log.isDebugEnabled()) {
-            log.debug( "Getting similar terms from: " + query );
+            log.debug("Getting similar terms from: {}", query);
         }
         
         try {
         	// read the RDF/XML file
         	model.read(query);
         } catch (DoesNotExistException e) {
-        	log.error("The search-function does not exist: " + query, e);
+        	log.error("The search-function does not exist: {}", query, e);
         	return null;
         } catch (Exception e) {
-        	log.error("The URI seems to have a problem: " + query, e);
+        	log.error("The URI seems to have a problem: {}", query, e);
         	return null;
         }
 

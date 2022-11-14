@@ -35,7 +35,8 @@ import java.util.Locale;
 import java.util.ResourceBundle;
 
 import org.apache.axis.AxisFault;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import com.hp.hpl.jena.rdf.model.NodeIterator;
 import com.hp.hpl.jena.rdf.model.RDFNode;
@@ -63,7 +64,7 @@ import de.ingrid.external.sns.SNSMapper.HierarchyDirection;
  */
 public class SNSService implements GazetteerService, ThesaurusService, FullClassifyService, ChronicleService {
 
-    private final static Logger log = Logger.getLogger( SNSService.class );
+    private final static Logger log = LogManager.getLogger( SNSService.class );
 
     private static final String ADMINISTRATIVE_IDENTIFIER = "-admin-";
 
@@ -79,8 +80,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
         ResourceBundle resourceBundle = ResourceBundle.getBundle( "sns" );
 
         if (log.isInfoEnabled()) {
-            log.info( "initializing SNSService, creating SNSClient ! " + "Thesaurus: " + resourceBundle.getString( "sns.serviceURL.thesaurus" ) + " " + "Gazetteer: "
-                    + resourceBundle.getString( "sns.serviceURL.gazetteer" ) + " " + "Chronicle: " + resourceBundle.getString( "sns.serviceURL.chronicle" ) );
+            log.info("initializing SNSService, creating SNSClient ! Thesaurus: {} Gazetteer: {} Chronicle: {}", resourceBundle.getString("sns.serviceURL.thesaurus"), resourceBundle.getString("sns.serviceURL.gazetteer"), resourceBundle.getString("sns.serviceURL.chronicle"));
         }
 
         snsClient = new SNSClient( resourceBundle.getString( "sns.username" ), resourceBundle.getString( "sns.password" ), resourceBundle.getString( "sns.language" ),
@@ -98,7 +98,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
         String excludedTerms = "";
 
         if (log.isDebugEnabled()) {
-            log.debug( "getRelatedLocationsFromLocation(): " + locationId + " includeFrom=" + includeFrom + " " + langFilter );
+            log.debug("getRelatedLocationsFromLocation(): {} includeFrom={} {}", locationId, includeFrom, langFilter);
         }
 
         // no language in SNS for getPSI !!!
@@ -132,7 +132,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 
             if (log.isDebugEnabled()) {
                 int excludedLength = excludedTerms.isEmpty() ? 0 : excludedTerms.split( "," ).length;
-                log.debug( "return locations.size: " + resultList.size() + " (excluded: " + excludedLength + " => " + excludedTerms + ")" );
+                log.debug("return locations.size: {} (excluded: {} => {})", resultList.size(), excludedLength, excludedTerms);
             }
 
             return resultList.toArray( new Location[resultList.size()] );
@@ -146,7 +146,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
         String langFilter = getSNSLanguageFilter( language );
 
         if (log.isDebugEnabled()) {
-            log.debug( "getLocation(): " + locationId + " " + langFilter );
+            log.debug("getLocation(): {} {}", locationId, langFilter);
         }
 
         // no language in SNS for getPSI !!!
@@ -156,7 +156,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
         }
 
         if (log.isDebugEnabled()) {
-            log.debug( "return: " + result );
+            log.debug("return: {}", result);
         }
 
         return result;
@@ -169,7 +169,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
         String langFilter = getSNSLanguageFilter( language );
 
         if (log.isDebugEnabled()) {
-            log.debug( "getLocationsFromText(): " + text + " " + langFilter );
+            log.debug("getLocationsFromText(): {} {}", text, langFilter);
         }
 
         Resource[] res = snsAutoClassifyText( text, analyzeMaxWords, type, ignoreCase, langFilter );
@@ -191,7 +191,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
         }
 
         if (log.isDebugEnabled()) {
-            log.debug( "return locations.size: " + resultList.size() );
+            log.debug("return locations.size: {}", resultList.size());
         }
 
         return resultList.toArray( new Location[resultList.size()] );
@@ -207,7 +207,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
         boolean addDescriptors = false;
 
         if (log.isDebugEnabled()) {
-            log.debug( "findLocationsFromQueryTerm(): " + queryTerm + " " + FilterType.ONLY_LOCATIONS + " " + searchType + " " + langFilter );
+            log.debug("findLocationsFromQueryTerm(): {} {} {} {}", queryTerm, FilterType.ONLY_LOCATIONS, searchType, langFilter);
         }
 
         Resource topics = snsFindTopics( null, queryTerm, type, searchType, addDescriptors, langFilter );
@@ -230,7 +230,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
         }
 
         if (log.isDebugEnabled()) {
-            log.debug( "return locations.size: " + resultList.size() );
+            log.debug("return locations.size: {}", resultList.size());
         }
 
         return resultList.toArray( new Location[resultList.size()] );
@@ -257,14 +257,14 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
         String langFilter = getSNSLanguageFilter( language );
 
         if (log.isDebugEnabled()) {
-            log.debug( "findTermsFromQueryTerm(): " + queryTerm + " " + searchType + " " + langFilter );
+            log.debug("findTermsFromQueryTerm(): {} {} {}", queryTerm, searchType, langFilter);
         }
 
         Resource res = snsFindTopics( url, queryTerm, FilterType.ONLY_TERMS, searchType, addDescriptors, langFilter );
         List<Term> resultList = snsMapper.mapToTerms( res, null, langFilter );
 
         if (log.isDebugEnabled()) {
-            log.debug( "return locations.size: " + resultList.size() );
+            log.debug("return locations.size: {}", resultList.size());
         }
 
         return resultList.toArray( new Term[resultList.size()] );
@@ -290,7 +290,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
         }
 
         if (log.isDebugEnabled()) {
-            log.debug( "getHierarchyNextLevel(): " + termId + " " + langFilter );
+            log.debug("getHierarchyNextLevel(): {} {}", termId, langFilter);
         }
 
         Resource mapFragment = snsGetHierarchy( url, termId, depth, direction, includeSiblings, langFilter );
@@ -304,7 +304,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
                 resultList = snsMapper.mapToTreeTerms( termId, direction, mapFragment, langFilter );
 
             if (log.isDebugEnabled()) {
-                log.debug( "return terms.size: " + resultList.size() );
+                log.debug("return terms.size: {}", resultList.size());
             }
         }
         return resultList.toArray( new TreeTerm[resultList.size()] );
@@ -323,7 +323,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
         String langFilter = getSNSLanguageFilter( language );
 
         if (log.isDebugEnabled()) {
-            log.debug( "getHierarchyPathToTop(): " + termId + " " + langFilter );
+            log.debug("getHierarchyPathToTop(): {} {}", termId, langFilter);
         }
 
         Resource hierarchy = snsGetHierarchy( url, termId, depth, direction, includeSiblings, langFilter );
@@ -341,7 +341,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
         }
 
         if (log.isDebugEnabled()) {
-            log.debug( "return startTerm: " + resultList.get( 0 ) );
+            log.debug("return startTerm: {}", resultList.get(0));
         }
 
         return resultList.get( 0 );
@@ -373,7 +373,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
         String langFilter = getSNSLanguageFilter( language );
 
         if (log.isDebugEnabled()) {
-            log.debug( "getSimilarTermsFromNames(): " + names + " " + langFilter );
+            log.debug("getSimilarTermsFromNames(): {} {}", names, langFilter);
         }
 
         // Resource topics = snsGetSimilarTerms(names, ignoreCase, langFilter);
@@ -381,7 +381,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
         List<Term> resultList = snsMapper.mapSimilarToTerms( resSimilarTerms, langFilter );
 
         if (log.isDebugEnabled()) {
-            log.debug( "return terms.size: " + resultList.size() );
+            log.debug("return terms.size: {}", resultList.size());
         }
 
         return resultList.toArray( new Term[resultList.size()] );
@@ -392,7 +392,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
         String langFilter = getSNSLanguageFilter( language );
 
         if (log.isDebugEnabled()) {
-            log.debug( "getRelatedTermsFromTerm(): " + termId + " " + langFilter );
+            log.debug("getRelatedTermsFromTerm(): {} {}", termId, langFilter);
         }
 
         Resource term = snsClient.getTerm( termId, langFilter, FilterType.ONLY_TERMS );
@@ -401,7 +401,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
             List<RelatedTerm> resultList = snsMapper.mapToRelatedTerms( termId, term, langFilter );
 
             if (log.isDebugEnabled()) {
-                log.debug( "return terms.size: " + resultList.size() );
+                log.debug("return terms.size: {}", resultList.size());
             }
 
             return resultList.toArray( new RelatedTerm[resultList.size()] );
@@ -415,7 +415,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
         String langFilter = getSNSLanguageFilter( language );
 
         if (log.isDebugEnabled()) {
-            log.debug( "getTerm(): " + termId + " " + langFilter );
+            log.debug("getTerm(): {} {}", termId, langFilter);
         }
 
         // no language in SNS for getPSI !!!
@@ -426,7 +426,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
             topic = snsMapper.mapToTerm( term, new TermImpl(), langFilter );
 
             if (log.isDebugEnabled()) {
-                log.debug( "return term: " + topic );
+                log.debug("return term: {}", topic);
             }
         }
 
@@ -438,7 +438,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
         String langFilter = getSNSLanguageFilter( language );
 
         if (log.isDebugEnabled()) {
-            log.debug( "getTermsFromText(): " + text + " maxWords=" + analyzeMaxWords + " ignoreCase=" + ignoreCase + " " + langFilter );
+            log.debug("getTermsFromText(): {} maxWords={} ignoreCase={} {}", text, analyzeMaxWords, ignoreCase, langFilter);
         }
 
         Resource[] res = snsAutoClassifyText( text, analyzeMaxWords, FilterType.ONLY_TERMS, ignoreCase, langFilter );
@@ -446,7 +446,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
         List<Term> resultList = snsMapper.mapToTerms( res[0], TermType.DESCRIPTOR, langFilter );
 
         if (log.isDebugEnabled()) {
-            log.debug( "return terms.size: " + resultList.size() );
+            log.debug("return terms.size: {}", resultList.size());
         }
 
         return resultList.toArray( new Term[resultList.size()] );
@@ -459,7 +459,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
         String langFilter = getSNSLanguageFilter( language );
 
         if (log.isDebugEnabled()) {
-            log.debug( "autoClassifyURL(): " + url + " maxWords=" + analyzeMaxWords + " ignoreCase=" + ignoreCase + " " + langFilter );
+            log.debug("autoClassifyURL(): {} maxWords={} ignoreCase={} {}", url, analyzeMaxWords, ignoreCase, langFilter);
         }
 
         Resource[] resources = snsAutoClassifyURL( url, filter, langFilter );
@@ -470,7 +470,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
             int numTerms = result.getTerms() != null ? result.getTerms().size() : 0;
             int numLocations = result.getLocations() != null ? result.getLocations().size() : 0;
             int numEvents = result.getEvents() != null ? result.getEvents().size() : 0;
-            log.debug( "FullClassifyResult: numTerms=" + numTerms + " numLocations=" + numLocations + " numEvents=" + numEvents );
+            log.debug("FullClassifyResult: numTerms={} numLocations={} numEvents={}", numTerms, numLocations, numEvents);
         }
 
         return result;
@@ -481,7 +481,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
         String langFilter = getSNSLanguageFilter( language );
 
         if (log.isDebugEnabled()) {
-            log.debug( "autoClassifyText(): maxWords=" + analyzeMaxWords + " ignoreCase=" + ignoreCase + " " + langFilter );
+            log.debug("autoClassifyText(): maxWords={} ignoreCase={} {}", analyzeMaxWords, ignoreCase, langFilter);
         }
 
         Resource[] resources = snsAutoClassifyText( text, analyzeMaxWords, filter, ignoreCase, langFilter );
@@ -491,7 +491,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
             int numTerms = result.getTerms() != null ? result.getTerms().size() : 0;
             int numLocations = result.getLocations() != null ? result.getLocations().size() : 0;
             int numEvents = result.getEvents() != null ? result.getEvents().size() : 0;
-            log.debug( "FullClassifyResult: numTerms=" + numTerms + " numLocations=" + numLocations + " numEvents=" + numEvents );
+            log.debug("FullClassifyResult: numTerms={} numLocations={} numEvents={}", numTerms, numLocations, numEvents);
         }
 
         return result;
@@ -622,7 +622,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
             else
                 resource = snsClient.getHierachy( new URL( url ), depth, direction, includeSiblings, langFilter, root );
         } catch (Exception e) {
-            log.error( "Error calling snsClient.getHierachy with root=" + root, e );
+            log.error("Error calling snsClient.getHierachy with root={}", root, e );
         }
 
         return resource;
