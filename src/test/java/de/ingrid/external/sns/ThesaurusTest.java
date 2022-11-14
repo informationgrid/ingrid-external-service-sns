@@ -399,7 +399,7 @@ public class ThesaurusTest {
 		TreeTerm startTerm = thesaurusService.getHierarchyPathToTop(termId, locale);
 		// start term is term with requested id
 		assertEquals(termId, startTerm.getId());
-        String[] expectedPath = {"Spreewald", "[Deutsche Biosphärenreservate]", "[Biosphärenreservate]", "Großschutzgebiet"};
+        String[] expectedPath = {"Spreewald", "Brandenburg [Land]", "Bundesländer Deutschlands", "Bundesrepublik Deutschland", "Mitteleuropa", "Europa", "Kontinente", "Erde [Planet]", "[Erde und Weltraum]"};
 		assertHierarchyPath( expectedPath, startTerm );
 	}
 

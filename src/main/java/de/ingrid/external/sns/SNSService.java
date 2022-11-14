@@ -34,14 +34,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.ResourceBundle;
 
-import org.apache.axis.AxisFault;
+import org.apache.jena.rdf.model.NodeIterator;
+import org.apache.jena.rdf.model.RDFNode;
+import org.apache.jena.rdf.model.Resource;
+import org.apache.jena.rdf.model.StmtIterator;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
-import com.hp.hpl.jena.rdf.model.NodeIterator;
-import com.hp.hpl.jena.rdf.model.RDFNode;
-import com.hp.hpl.jena.rdf.model.Resource;
-import com.hp.hpl.jena.rdf.model.StmtIterator;
 
 import de.ingrid.external.ChronicleService;
 import de.ingrid.external.FullClassifyService;
@@ -108,7 +106,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
             // iterate over all related locations fetched exclusively to get all information about
             // type and expiration date
             // List<Location> resultList = snsMapper.mapToLocationsFromLocation(location, checkExpired, langFilter);
-            List<Location> resultList = new ArrayList<Location>();
+            List<Location> resultList = new ArrayList<>();
 
             StmtIterator it = RDFUtils.getRelatedConcepts( topic );
             while (it.hasNext()) {
@@ -165,7 +163,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     @Override
     public Location[] getLocationsFromText(String text, int analyzeMaxWords, boolean ignoreCase, Locale language) {
         FilterType type = FilterType.ONLY_LOCATIONS;
-        List<Location> resultList = new ArrayList<Location>();
+        List<Location> resultList = new ArrayList<>();
         String langFilter = getSNSLanguageFilter( language );
 
         if (log.isDebugEnabled()) {
@@ -200,7 +198,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     @Override
     public Location[] findLocationsFromQueryTerm(String queryTerm, QueryType typeOfQuery, de.ingrid.external.GazetteerService.MatchingType matching, Locale language) {
         FilterType type = FilterType.ONLY_LOCATIONS;
-        List<Location> resultList = new ArrayList<Location>();
+        List<Location> resultList = new ArrayList<>();
         String searchType = getSNSSearchType( matching, queryTerm );
         String langFilter = getSNSLanguageFilter( language );
         queryTerm = removeWildcards( queryTerm );
@@ -295,7 +293,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 
         Resource mapFragment = snsGetHierarchy( url, termId, depth, direction, includeSiblings, langFilter );
 
-        List<TreeTerm> resultList = new ArrayList<TreeTerm>();
+        List<TreeTerm> resultList = new ArrayList<>();
         if (mapFragment != null) {
             // we also need language for additional filtering ! SNS delivers wrong results !
             if (termId == null)
@@ -500,9 +498,9 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     // ----------------------- PRIVATE -----------------------------------
 
     private FullClassifyResult convertResourcesToFullClassifyResult(Resource[] resources, String langFilter) {
-        List<Term> terms = new ArrayList<Term>();
-        List<Location> locations = new ArrayList<Location>();
-        List<Event> events = new ArrayList<Event>();
+        List<Term> terms = new ArrayList<>();
+        List<Location> locations = new ArrayList<>();
+        List<Event> events = new ArrayList<>();
         for (int i = 0; i < resources.length; i++) {
             Resource resource = resources[i];
             if (resource != null) {
@@ -588,13 +586,6 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
                 resources[1] = snsClient.autoClassifyToUrl( url.toString(), FilterType.ONLY_LOCATIONS, langFilter );
             if (filter == null || filter == FilterType.ONLY_EVENTS)
                 resources[2] = snsClient.autoClassifyToUrl( url.toString(), FilterType.ONLY_EVENTS, langFilter );
-
-        } catch (AxisFault f) {
-            log.info( "Error while calling autoClassifyToUrl.", f );
-            if (f.getFaultString().contains( "Timeout" ))
-                throw new RuntimeException( ERROR_SNS_TIMEOUT );
-            else
-                throw new RuntimeException( ERROR_SNS_INVALID_URL );
 
         } catch (Exception e) {
             log.error( "Error calling snsClient.autoClassifyToUrl", e );
@@ -725,7 +716,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
     @Override
     public Event[] findEventsFromQueryTerm(String term, de.ingrid.external.ChronicleService.MatchingType matchingType, String[] inCollections, String dateStart, String dateEnd,
             Locale lang, int page, int length) {
-        List<Event> events = new ArrayList<Event>();
+        List<Event> events = new ArrayList<>();
         int totalResults = 0;
 
         String langFilter = getSNSLanguageFilter( lang );
@@ -736,7 +727,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
             inCollections = new String[] { "" };
 
         try {
-            List<String> uniqueResults = new ArrayList<String>();
+            List<String> uniqueResults = new ArrayList<>();
             int maxPage = new Double( Math.floor( (page * length) / SNSClient.NUM_SEARCH_RESULTS ) ).intValue() + SNSClient.PAGE_START;
             int extraPages = new Double( Math.floor( length / SNSClient.NUM_SEARCH_RESULTS ) ).intValue();
             int start = new Long( (page * length) % SNSClient.NUM_SEARCH_RESULTS ).intValue();
@@ -789,7 +780,7 @@ public class SNSService implements GazetteerService, ThesaurusService, FullClass
 
     @Override
     public Event[] getAnniversaries(String date, Locale lang) {
-        List<Event> events = new ArrayList<Event>();
+        List<Event> events = new ArrayList<>();
 
         String langFilter = getSNSLanguageFilter( lang );
         try {
