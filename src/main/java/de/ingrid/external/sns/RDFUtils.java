@@ -22,18 +22,10 @@
  */
 package de.ingrid.external.sns;
 
+import org.apache.jena.rdf.model.*;
+
 import java.util.ArrayList;
 import java.util.List;
-
-import com.hp.hpl.jena.rdf.model.LiteralRequiredException;
-import com.hp.hpl.jena.rdf.model.Model;
-import com.hp.hpl.jena.rdf.model.NodeIterator;
-import com.hp.hpl.jena.rdf.model.Property;
-import com.hp.hpl.jena.rdf.model.RDFNode;
-import com.hp.hpl.jena.rdf.model.ResIterator;
-import com.hp.hpl.jena.rdf.model.Resource;
-import com.hp.hpl.jena.rdf.model.Statement;
-import com.hp.hpl.jena.rdf.model.StmtIterator;
 
 public class RDFUtils {
 
