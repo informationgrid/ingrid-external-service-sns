@@ -2,7 +2,7 @@
  * **************************************************-
  * ingrid-external-service-sns
  * ==================================================
- * Copyright (C) 2014 - 2022 wemove digital solutions GmbH
+ * Copyright (C) 2014 - 2023 wemove digital solutions GmbH
  * ==================================================
  * Licensed under the EUPL, Version 1.1 or – as soon they will be
  * approved by the European Commission - subsequent versions of the
@@ -30,15 +30,21 @@ import de.ingrid.external.FullClassifyService;
 import de.ingrid.external.FullClassifyService.FilterType;
 import de.ingrid.external.om.FullClassifyResult;
 import de.ingrid.external.om.IndexedDocument;
-import junit.framework.TestCase;
-import org.junit.Ignore;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 // Chronic and gazetteer not supported anymore by SNS
-@Ignore
-public class FullClassifyTest extends TestCase {
+@Disabled
+public class FullClassifyTest {
 
 	private FullClassifyService fullClassifyService;
 
+	@BeforeEach
 	public void setUp() {
 		SNSService snsService = new SNSService();
 		try {
@@ -49,6 +55,7 @@ public class FullClassifyTest extends TestCase {
 		fullClassifyService = snsService;
 	}
 
+	@Test
 	public final void testAutoClassifyURL() throws MalformedURLException {
 		FullClassifyResult result;
 
@@ -75,28 +82,29 @@ public class FullClassifyTest extends TestCase {
 		result = fullClassifyService.autoClassifyURL(url, analyzeMaxWords, ignoreCase, FilterType.ONLY_TERMS, locale);
 		checkFullClassifyResult(result, url);
 		assertTrue(result.getTerms().size() > 0);
-		assertTrue(result.getLocations().size() == 0);
-		assertTrue(result.getEvents().size() == 0);
+		assertEquals(result.getLocations().size(), 0);
+		assertEquals(result.getEvents().size(), 0);
 
 		// ONLY LOCATIONS
 		result = fullClassifyService.autoClassifyURL(url, analyzeMaxWords, ignoreCase, FilterType.ONLY_LOCATIONS, locale);
 		checkFullClassifyResult(result, url);
-		assertTrue(result.getTerms().size() == 0);
+		assertEquals(result.getTerms().size(), 0);
 		assertTrue(result.getLocations().size() > 0);
-		assertTrue(result.getEvents().size() == 0);
+		assertEquals(result.getEvents().size(), 0);
 
 		// ONLY EVENTS
 		result = fullClassifyService.autoClassifyURL(url, analyzeMaxWords, ignoreCase, FilterType.ONLY_EVENTS, locale);
 		// may have NO EVENTS ?
 		System.out.println("NO checkFullClassifyResult(), PROBLEMS WITH EVENTS ?");
 //		checkFullClassifyResult(result, url);
-		assertTrue(result.getTerms().size() == 0);
-		assertTrue(result.getLocations().size() == 0);
+		assertEquals(result.getTerms().size(), 0);
+		assertEquals(result.getLocations().size(), 0);
 		// may have NO EVENTS ?
 //		assertTrue(result.getEvents().size() > 0);
 		System.out.println("NUMBER OF EVENTS: " + result.getEvents().size());
 	}
 
+	@Test
 	public final void testAutoClassifyText() throws MalformedURLException {
 		FullClassifyResult result;
 

@@ -2,7 +2,7 @@
  * **************************************************-
  * ingrid-external-service-sns
  * ==================================================
- * Copyright (C) 2014 - 2022 wemove digital solutions GmbH
+ * Copyright (C) 2014 - 2023 wemove digital solutions GmbH
  * ==================================================
  * Licensed under the EUPL, Version 1.1 or – as soon they will be
  * approved by the European Commission - subsequent versions of the
@@ -24,20 +24,30 @@ package de.ingrid.external.sns;
 
 import java.util.Locale;
 
-import junit.framework.TestCase;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import de.ingrid.external.GazetteerService;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import de.ingrid.external.GazetteerService.MatchingType;
 import de.ingrid.external.GazetteerService.QueryType;
 import de.ingrid.external.om.Location;
-import org.junit.Ignore;
 
 // Chronic and gazetteer not supported anymore by SNS
-@Ignore
-public class GazetteerTest extends TestCase {
+@Disabled
+public class GazetteerTest {
 
     private GazetteerService gazetteerService;
 
-    public void setUp() {
+	@BeforeEach
+	public void setUp() {
         SNSService snsService = new SNSService();
         try {
             snsService.init();
@@ -47,7 +57,8 @@ public class GazetteerTest extends TestCase {
         gazetteerService = snsService;
     }
 
-    public final void testGetRelatedLocationsFromLocation() {
+	@Test
+	public final void testGetRelatedLocationsFromLocation() {
         Location[] locations;
 
         // valid location in german, INCLUDE fromLocation
@@ -65,7 +76,7 @@ public class GazetteerTest extends TestCase {
         locations = gazetteerService.getRelatedLocationsFromLocation( locationId, false, locale );
         assertEquals( 5, locations.length );
         for (Location loc : locations) {
-            assertTrue( !locationId.equals( loc.getId() ) );
+									assertNotEquals(locationId, loc.getId());
             checkLocation( loc );
             assertFalse( loc.getIsExpired() );
         }
@@ -82,7 +93,7 @@ public class GazetteerTest extends TestCase {
         assertEquals( 5, locations.length );
         for (Location loc : locations) {
             checkLocation( loc );
-            assertFalse( "https://sns.uba.de/gazetteer/GEMEINDE0325300005".equals( loc.getId() ) );
+									assertNotEquals("https://sns.uba.de/gazetteer/GEMEINDE0325300005", loc.getId());
             assertFalse( loc.getIsExpired() );
         }
 
@@ -100,15 +111,16 @@ public class GazetteerTest extends TestCase {
         locationId = "https://sns.uba.de/gazetteer/wrong id";
         locale = Locale.GERMAN;
         locations = gazetteerService.getRelatedLocationsFromLocation( locationId, true, locale );
-        assertTrue( locations.length == 0 );
+		assertEquals(locations.length, 0);
 
         // in english ?
         locale = Locale.ENGLISH;
         locations = gazetteerService.getRelatedLocationsFromLocation( locationId, true, locale );
-        assertTrue( locations.length == 0 );
+		assertEquals(locations.length, 0);
     }
 
-    public final void testGetLocation() {
+	@Test
+	public final void testGetLocation() {
         Location location;
 
         // valid location in german
@@ -167,7 +179,8 @@ public class GazetteerTest extends TestCase {
         assertNull( location );
     }
 
-    public final void testGetLocationsFromText() {
+	@Test
+	public final void testGetLocationsFromText() {
         Location[] locations;
 
         // german locations
@@ -199,7 +212,8 @@ public class GazetteerTest extends TestCase {
         // assertTrue(locations.length > 0);
     }
 
-    public final void testFindLocationsFromQueryTerm() {
+	@Test
+	public final void testFindLocationsFromQueryTerm() {
         Location[] locations;
 
         // german locations
@@ -284,7 +298,8 @@ public class GazetteerTest extends TestCase {
 
     }
 
-    public final void testGetSuccessorFromExpired() {
+	@Test
+	public final void testGetSuccessorFromExpired() {
         Location location = gazetteerService.getLocation( "https://sns.uba.de/gazetteer/GEMEINDE1510100000", new Locale( "de" ) );
         assertTrue( location.getIsExpired() );
         assertEquals( "2012-11-28", location.getExpiredDate() );
@@ -292,12 +307,14 @@ public class GazetteerTest extends TestCase {
         assertEquals( "https://sns.uba.de/gazetteer/_4e9d66f0-1b80-0130-d0e8-482a1437a069", location.getSuccessorIds()[0] );
     }
 
-    public final void testCheckTextEncoding() {
+	@Test
+	public final void testCheckTextEncoding() {
         Location location = gazetteerService.getLocation( "https://sns.uba.de/gazetteer/BIOSPHAERE3", new Locale( "de" ) );
         assertEquals( "Biosphärenreservat", location.getTypeName() );
     }
 
-    public final void testWildcard() {
+	@Test
+	public final void testWildcard() {
         Locale locale = Locale.GERMAN;
 
         // EXACT MATCH

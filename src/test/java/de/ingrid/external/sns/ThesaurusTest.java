@@ -2,7 +2,7 @@
  * **************************************************-
  * ingrid-external-service-sns
  * ==================================================
- * Copyright (C) 2014 - 2022 wemove digital solutions GmbH
+ * Copyright (C) 2014 - 2023 wemove digital solutions GmbH
  * ==================================================
  * Licensed under the EUPL, Version 1.1 or – as soon they will be
  * approved by the European Commission - subsequent versions of the
@@ -33,12 +33,19 @@ import de.ingrid.external.om.RelatedTerm.RelationType;
 import de.ingrid.external.om.Term;
 import de.ingrid.external.om.Term.TermType;
 import de.ingrid.external.om.TreeTerm;
-import junit.framework.TestCase;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-public class ThesaurusTest extends TestCase {
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+public class ThesaurusTest {
 	
 	private ThesaurusService thesaurusService;
-	
+
+	@BeforeEach
 	public void setUp() {
 		SNSService snsService = new SNSService();
 		try {
@@ -48,7 +55,8 @@ public class ThesaurusTest extends TestCase {
 		}
 		thesaurusService = snsService;
 	}
-	
+
+	@Test
 	public final void testFindTermsFromQueryTerm() {
 		Term[] terms;
 
@@ -98,6 +106,7 @@ public class ThesaurusTest extends TestCase {
 		}
 	}
 
+	@Test
 	public final void testGetTerm() {
 		Term term;
 
@@ -145,6 +154,7 @@ public class ThesaurusTest extends TestCase {
 		assertNull(term);
 	}
 
+	@Test
 	public final void testGetSimilarTermsFromNames() {
 		Term[] terms;
 
@@ -164,12 +174,13 @@ public class ThesaurusTest extends TestCase {
 		locale = Locale.ENGLISH;
 
 		terms = thesaurusService.getSimilarTermsFromNames(new String[] { name }, true, locale);
-		assertTrue(terms.length == 0);
+		assertEquals(terms.length, 0);
 		for (Term term : terms) {
 			checkTerm(term);
 		}
 	}
 
+	@Test
 	public final void testGetTermsFromText() {
 		Term[] terms;
 
@@ -200,6 +211,7 @@ public class ThesaurusTest extends TestCase {
 */
 	}
 
+	@Test
 	public final void testGetRelatedTermsFromTerm() {
 		RelatedTerm[] relatedTerms;
 
@@ -241,9 +253,10 @@ public class ThesaurusTest extends TestCase {
 		termId = "https://sns.uba.de/umthes/wrong-id";
 		relatedTerms = thesaurusService.getRelatedTermsFromTerm(termId, locale);
 		assertNotNull(relatedTerms);
-		assertTrue(relatedTerms.length == 0);
+		assertEquals(relatedTerms.length, 0);
 	}
 
+	@Test
 	public final void testGetHierarchyNextLevel() {
 		TreeTerm[] treeTerms;
 
@@ -300,14 +313,14 @@ public class ThesaurusTest extends TestCase {
 		termId = "https://sns.uba.de/umthes/_00023126"; // Stadtklima
 		treeTerms = thesaurusService.getHierarchyNextLevel(termId, locale);
 		assertNotNull(treeTerms);
-		assertTrue(treeTerms.length == 0);
+		assertEquals(treeTerms.length, 0);
 
 
 		// INVALID term, SNS throws Exception !
 		termId = "wrong id";
 		treeTerms = thesaurusService.getHierarchyNextLevel(termId, locale);
 		assertNotNull(treeTerms);
-		assertTrue(treeTerms.length == 0);
+		assertEquals(treeTerms.length, 0);
 
 	}
 
@@ -315,7 +328,7 @@ public class ThesaurusTest extends TestCase {
         List<TreeTerm> currentTerm = new ArrayList<TreeTerm>();
         currentTerm.add( startTerm );
         for (String expectedParent : expectedPath) {
-            assertNotNull("No further parent element when was expected: " + expectedParent, currentTerm);
+            assertNotNull(currentTerm, "No further parent element when was expected: " + expectedParent);
             boolean found = false;
             for (TreeTerm treeTerm : currentTerm) {
                 if (expectedParent.equals( treeTerm.getName() )) {
@@ -325,10 +338,11 @@ public class ThesaurusTest extends TestCase {
                 }
             }
             String currentTermName = currentTerm == null ? "" : currentTerm.get(0).getName();
-            assertTrue( "the following parent has not been found in the hierarchy: " + expectedParent + " but was: " + currentTermName, found );
+            assertTrue( found , "the following parent has not been found in the hierarchy: " + expectedParent + " but was: " + currentTermName);
         }
 	}
-	
+
+	@Test
 	public final void testGetHierarchyPathToTop() {
 		TreeTerm startTerm;
 
@@ -339,7 +353,7 @@ public class ThesaurusTest extends TestCase {
 		// start term is term with requested id
 		assertEquals(termId, startTerm.getId());
 		// has 1 parent
-		assertTrue(startTerm.getParents().size() == 2);
+		assertEquals(startTerm.getParents().size(), 2);
 		// all parents have further parent and also start term as child
 		for (TreeTerm parentTerm : startTerm.getParents()) {
 			checkTreeTerm(parentTerm, true, true);
@@ -377,17 +391,19 @@ public class ThesaurusTest extends TestCase {
 		assertTrue(treeTerms.length == 0);
 */
 	}
-	
+
+	@Test
 	public final void testGetHierarchyPathToTopMultipleParents() {
 		String termId = "https://sns.uba.de/umthes/_00101147"; // Spreewald 
 		Locale locale = Locale.GERMAN;
 		TreeTerm startTerm = thesaurusService.getHierarchyPathToTop(termId, locale);
 		// start term is term with requested id
 		assertEquals(termId, startTerm.getId());
-        String[] expectedPath = {"Spreewald", "[Deutsche Biosphärenreservate]", "[Biosphärenreservate]", "Großschutzgebiet"};
+        String[] expectedPath = {"Spreewald", "Brandenburg [Land]", "Bundesländer Deutschlands", "Bundesrepublik Deutschland", "Mitteleuropa", "Europa", "Kontinente", "Erde [Planet]", "[Erde und Weltraum]"};
 		assertHierarchyPath( expectedPath, startTerm );
 	}
-	
+
+	@Test
 	public void testHandleLabels() {
 	    String termId = "https://sns.uba.de/umthes/_00019331"; // has no name 
         Locale locale = Locale.GERMAN;

@@ -2,7 +2,7 @@
  * **************************************************-
  * ingrid-external-service-sns
  * ==================================================
- * Copyright (C) 2014 - 2022 wemove digital solutions GmbH
+ * Copyright (C) 2014 - 2023 wemove digital solutions GmbH
  * ==================================================
  * Licensed under the EUPL, Version 1.1 or – as soon they will be
  * approved by the European Commission - subsequent versions of the
@@ -34,15 +34,9 @@ import java.util.ResourceBundle;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.apache.log4j.Logger;
-
-import com.hp.hpl.jena.rdf.model.NodeIterator;
-import com.hp.hpl.jena.rdf.model.RDFNode;
-import com.hp.hpl.jena.rdf.model.ResIterator;
-import com.hp.hpl.jena.rdf.model.Resource;
-import com.hp.hpl.jena.rdf.model.ResourceRequiredException;
-import com.hp.hpl.jena.rdf.model.Statement;
-import com.hp.hpl.jena.rdf.model.StmtIterator;
+import org.apache.jena.rdf.model.*;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import de.ingrid.external.om.Event;
 import de.ingrid.external.om.FullClassifyResult;
@@ -71,7 +65,7 @@ public class SNSMapper {
 	/** Direction of a hierarchy operation for mapping of results */
     public enum HierarchyDirection { DOWN, UP }
 
-	private final static Logger log = Logger.getLogger(SNSMapper.class);
+	private final static Logger log = LogManager.getLogger(SNSMapper.class);
 	private final static SimpleDateFormat expiredDateParser = new SimpleDateFormat("yyyy-MM-dd");
 
 	private static SNSMapper myInstance;
@@ -222,7 +216,7 @@ public class SNSMapper {
     	    outLocation.setNativeKey( key );
     	// otherwise log a warning that there was no native key for a "Gemeinde"
     	} else {
-    	    log.warn( "No native key could be determined for: " + topic.getURI() );
+    	    log.warn("No native key could be determined for: {}", topic.getURI());
     	}
         // in case we didn't find a key, we use the number from the identifier
     	
@@ -549,7 +543,7 @@ public class SNSMapper {
         		l.setLinkAddress(RDFUtils.getDctPage(info));
         		result.addLink(l);
     	    } catch (ResourceRequiredException ex) {
-    	        log.error( "Resource could not be extracted from 'seeAlso'-field, which contains: " + nextInfo.getString(), ex );
+    	        log.error("Resource could not be extracted from 'seeAlso'-field, which contains: {}", nextInfo.getString(), ex );
     	    }
     	}
     	
@@ -594,7 +588,7 @@ public class SNSMapper {
 		try {
         	result.setLang(new Locale(lang));	
 		} catch (Exception e) {
-	    	log.warn("Error mapping Lang: " + lang, e);
+	    	log.warn("Error mapping Lang: {}", lang, e);
 	    	result.setLang(new Locale("de"));
 		}
     	/*
@@ -728,7 +722,7 @@ public class SNSMapper {
 		}
 
     	if (result == null) {
-        	log.error("Error parsing date: "+dateString);    		
+        	log.error("Error parsing date: {}", dateString);    		
     	}
 
     	return result;
