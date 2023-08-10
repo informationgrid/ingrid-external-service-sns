@@ -36,10 +36,7 @@ import de.ingrid.external.om.TreeTerm;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class ThesaurusTest {
 	
@@ -169,12 +166,11 @@ public class ThesaurusTest {
 		}
 
 		// english term
-		// TODO: not supported yet!
 		name = "water";
 		locale = Locale.ENGLISH;
 
 		terms = thesaurusService.getSimilarTermsFromNames(new String[] { name }, true, locale);
-		assertEquals(terms.length, 0);
+		assertNotEquals(0, terms.length);
 		for (Term term : terms) {
 			checkTerm(term);
 		}
@@ -399,7 +395,7 @@ public class ThesaurusTest {
 		TreeTerm startTerm = thesaurusService.getHierarchyPathToTop(termId, locale);
 		// start term is term with requested id
 		assertEquals(termId, startTerm.getId());
-        String[] expectedPath = {"Spreewald", "Brandenburg [Land]", "Bundesländer Deutschlands", "Bundesrepublik Deutschland", "Mitteleuropa", "Europa", "Kontinente", "Erde [Planet]", "[Erde und Weltraum]"};
+        String[] expectedPath = {"Spreewald", "Brandenburg [Land]", "Bundesländer Deutschlands", "Bundesrepublik Deutschland", "Mitteleuropa", "Europa", "Kontinent"};
 		assertHierarchyPath( expectedPath, startTerm );
 	}
 
