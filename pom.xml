@@ -8,7 +8,7 @@
   <modelVersion>4.0.0</modelVersion>
   <artifactId>ingrid-external-service-sns</artifactId>
   <packaging>jar</packaging>
-  <version>6.4.0-SNAPSHOT</version>
+  <version>6.3.0</version>
   <name>ingrid-external-service-sns</name>
   <scm>
     <connection>scm:git:git@github.com:informationgrid/ingrid-external-service-sns.git</connection>
