@@ -27,6 +27,7 @@ import org.apache.jena.rdf.model.RDFNode;
 import org.apache.jena.rdf.model.ResIterator;
 import org.apache.jena.rdf.model.Resource;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.net.URL;
@@ -78,6 +79,7 @@ public class SNSClientTest {
     }
 
     @Test
+    @Disabled("Search in description does not work anymore. Events are not supported anymore.")
     public void testFindEventsAt() throws Exception {
         // get all events by setting date to null
         Resource eventsRes = snsClient.findEvents("wasser", "contains", null,
@@ -93,6 +95,7 @@ public class SNSClientTest {
     }
 
     @Test
+    @Disabled("Search in description does not work anymore. Events are not supported anymore.")
     public void testFindEventsFromTo() throws Exception {
         Resource eventsRes = snsClient.findEvents("", "contains", null, 0, "2019-01-01", "2019-08-29", "de", 10);
         assertNotNull(eventsRes);
@@ -119,6 +122,7 @@ public class SNSClientTest {
     }
 
     @Test
+    @Disabled("Search in description does not work anymore. Events are not supported anymore.")
     public void testGetEventTerm() {
         // Deutsche Ereignisse
         Locale lang = new Locale("de");

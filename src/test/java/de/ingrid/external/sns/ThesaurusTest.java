@@ -349,7 +349,7 @@ public class ThesaurusTest {
 		// start term is term with requested id
 		assertEquals(termId, startTerm.getId());
 		// has 1 parent
-		assertEquals(startTerm.getParents().size(), 2);
+		assertEquals(1, startTerm.getParents().size());
 		// all parents have further parent and also start term as child
 		for (TreeTerm parentTerm : startTerm.getParents()) {
 			checkTreeTerm(parentTerm, true, true);
